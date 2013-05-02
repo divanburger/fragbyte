@@ -1,0 +1,61 @@
+<project name="Juice" default="main">
+
+  <property name="src.dir" value="src"/>
+  <property name="grammar.dir" value="grammar"/>
+  <property name="build.dir" value="build"/>
+  <property name="classes.dir" value="${build.dir}/classes"/>
+  <property name="jar.dir" value="${build.dir}/jar"/>
+  <property name="lib.dir" value="lib" />
+
+  <property name="main-class" value="whitesquare.glslcross.glslcompiler.GLSLCompiler"/>
+
+  <path id="classpath">
+    <fileset dir="${lib.dir}" includes="**/*.jar" />
+  </path>
+
+  <target name="clean">
+    <delete dir="build" />
+  </target>
+
+  <target name="grammar">
+    <java fork="true" jar="${lib.dir}/antlr-4.0-complete.jar">
+      <arg value="-lib" />
+      <arg value="${grammar.dir}" />
+      <arg value="-package" />
+      <arg value="whitesquare.glslcross.glslcompiler" />
+      <arg value="grammar/GLSL.g4" />
+    </java>
+    <copy todir="${src.dir}/whitesquare/glslcross/glslcompiler">
+      <fileset dir="${grammar.dir}">
+        <include name="**/*.java" />
+      </fileset>
+    </copy>
+  </target>
+
+  <target name="compile" depends="grammar">
+    <mkdir dir="${classes.dir}" />
+    <javac debug="true" debuglevel="lines,vars,source" srcdir="${src.dir}" destdir="${classes.dir}" classpathref="classpath" includeantruntime="false">
+      
+    </javac>
+  </target>
+
+  <target name="jar" depends="compile">
+      <mkdir dir="${jar.dir}"/>
+      <jar destfile="${jar.dir}/${ant.project.name}.jar" basedir="${classes.dir}">
+          <manifest>
+              <attribute name="Main-Class" value="${main-class}"/>
+          </manifest>
+      </jar>
+  </target>
+
+  <target name="run" depends="jar">
+    <java fork="true" classname="${main-class}">
+      <classpath>
+        <path refid="classpath" />
+        <path location="${jar.dir}/${ant.project.name}.jar" />
+      </classpath>
+    </java>
+  </target>
+
+  <target name="main" depends="run" />
+</project>
