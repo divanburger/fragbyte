@@ -235,8 +235,7 @@ public class GLSLParser extends Parser {
 			setState(56); ((FunctionContext)_localctx).type = type();
 			setState(57); ((FunctionContext)_localctx).ID = match(ID);
 
-					writer.write(Bytecode.FUNC, (((FunctionContext)_localctx).ID!=null?((FunctionContext)_localctx).ID.getText():null));
-					Stack<Variable> parms = new Stack<Variable>();
+					ArrayList<Variable> parms = new ArrayList<Variable>();
 				
 			setState(59); match(8);
 			setState(75);
@@ -248,7 +247,7 @@ public class GLSLParser extends Parser {
 				if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << 2) | (1L << 10) | (1L << 12) | (1L << 18) | (1L << 24) | (1L << 27))) != 0)) {
 					{
 					setState(60); ((FunctionContext)_localctx).parameter = parameter();
-					parms.push(((FunctionContext)_localctx).parameter.var);
+					parms.add(((FunctionContext)_localctx).parameter.var);
 					}
 				}
 
@@ -260,7 +259,7 @@ public class GLSLParser extends Parser {
 					{
 					setState(65); match(4);
 					setState(66); ((FunctionContext)_localctx).parameter = parameter();
-					parms.push(((FunctionContext)_localctx).parameter.var);
+					parms.add(((FunctionContext)_localctx).parameter.var);
 					}
 					}
 					setState(73);
@@ -277,8 +276,12 @@ public class GLSLParser extends Parser {
 				break;
 			}
 			setState(77); match(25);
-
-					while (!parms.empty()) writer.store(parms.pop());
+					
+					int stackIn = 0;
+					for (Variable var : parms) stackIn += var.type.size;
+					writer.write(Bytecode.FUNC, (((FunctionContext)_localctx).ID!=null?((FunctionContext)_localctx).ID.getText():null), stackIn, ((FunctionContext)_localctx).type.t.size);
+					
+					for (Variable var : parms) writer.store(var);
 				
 					functions.add((((FunctionContext)_localctx).ID!=null?((FunctionContext)_localctx).ID.getText():null), ((FunctionContext)_localctx).type.t);
 				

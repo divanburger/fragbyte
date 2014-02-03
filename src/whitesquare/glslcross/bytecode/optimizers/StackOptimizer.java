@@ -1,6 +1,8 @@
 package whitesquare.glslcross.bytecode.optimizers;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 import whitesquare.glslcross.bytecode.Bytecode;
 import whitesquare.glslcross.bytecode.Instruction;
@@ -15,6 +17,7 @@ public class StackOptimizer implements Optimizer {
 	@Override
 	public boolean optimize(Program program) {
 		ArrayList<Instruction> instrs = program.instructions;
+		Map<String, Instruction> functions = new HashMap<String, Instruction>();
 
 		instrStackSize = new int[instrs.size()]; 
 		
@@ -33,7 +36,22 @@ public class StackOptimizer implements Optimizer {
 				
 				int stackIn = instr.bytecode.stackIn;
 				int stackOut = instr.bytecode.stackOut;
-	
+
+				if (instr.bytecode == Bytecode.FUNC) {
+					functions.put(instr.valueString, instr);
+					sp = 0;
+					stackOut = instr.stackIn;
+				} else if (instr.bytecode == Bytecode.CALL) {
+					if (functions.containsKey(instr.valueString)) {
+						Instruction func = functions.get(instr.valueString);
+						stackIn = func.stackIn;
+						stackOut = func.stackOut;
+					} else {
+						System.out.println("Could not find the function: " + instr.valueString);
+						return false;	
+					}
+				}
+				
 				sp -= stackIn;
 				
 				System.out.println(i + ": " + instr);

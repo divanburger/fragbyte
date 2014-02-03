@@ -10,6 +10,9 @@ public class Instruction {
 	public float valueFloat;
 	public String valueString;
 	
+	public int stackIn; // Only used to verify functions
+	public int stackOut;
+	
 	public Instruction(Bytecode bytecode) {
 		this.bytecode = bytecode;
 		this.type = Type.NONE;

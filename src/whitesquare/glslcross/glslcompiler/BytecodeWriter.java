@@ -23,6 +23,13 @@ class BytecodeWriter {
 	void write(Bytecode code, String name) {
 		program.add(new Instruction(code, name));
 	}
+	
+	void write(Bytecode code, String name, int stackIn, int stackOut) {
+		Instruction instr = new Instruction(code, name);
+		instr.stackIn = stackIn;
+		instr.stackOut = stackOut;
+		program.add(instr);
+	}	
 		
 	void write(Bytecode code, float number) {
 		if (code.ops != 1) throw new Error("Trying to write '" + code.name() + "' that expects " + code.ops + " operands with one operand");

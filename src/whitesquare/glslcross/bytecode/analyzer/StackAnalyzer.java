@@ -1,7 +1,10 @@
 package whitesquare.glslcross.bytecode.analyzer;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
+import whitesquare.glslcross.bytecode.Bytecode;
 import whitesquare.glslcross.bytecode.Instruction;
 import whitesquare.glslcross.bytecode.Program;
 
@@ -18,14 +21,31 @@ public class StackAnalyzer implements Analyzer {
 	@Override
 	public boolean analyze(Program program) {
 		ArrayList<Instruction> instrs = program.instructions;
+		Map<String, Instruction> functions = new HashMap<String, Instruction>();
 		
 		int stack = 0;
 		
 		for (int i = 0; i < instrs.size(); i++) {
 			Instruction instr = instrs.get(i);
 			
+			if (instr.bytecode == Bytecode.FUNC) {
+				stack = instr.stackIn;
+				functions.put(instr.valueString, instr);
+			}
+			
 			int stackIn = instr.bytecode.stackIn;
 			int stackOut = instr.bytecode.stackOut;
+			
+			if (instr.bytecode == Bytecode.CALL) {
+				if (functions.containsKey(instr.valueString)) {
+					Instruction func = functions.get(instr.valueString);
+					stackIn = func.stackIn;
+					stackOut = func.stackOut;
+				} else {
+					System.out.println("Could not find the function: " + instr.valueString);
+					return false;	
+				}
+			}
 			
 			if (stackIn > stack) {
 				System.out.println("Instruction uses more than what is in the stack!!");
@@ -36,6 +56,8 @@ public class StackAnalyzer implements Analyzer {
 			}
 			
 			if (debug) {
+				if (instr.bytecode == Bytecode.FUNC) System.out.println();
+				
 				for (int j = 0; j < stack - stackIn; j++)
 					System.out.print("|");
 				for (int j = 0; j < stackIn; j++)

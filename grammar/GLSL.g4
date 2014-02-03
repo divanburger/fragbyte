@@ -54,12 +54,15 @@ glsl:
 function:
 	type ID
 	{
-		writer.write(Bytecode.FUNC, $ID.text);
-		Stack<Variable> parms = new Stack<Variable>();
+		ArrayList<Variable> parms = new ArrayList<Variable>();
 	} 
-	'(' ((parameter {parms.push($parameter.var);})? (',' parameter {parms.push($parameter.var);})* | 'void') ')' 
-	{
-		while (!parms.empty()) writer.store(parms.pop());
+	'(' ((parameter {parms.add($parameter.var);})? (',' parameter {parms.add($parameter.var);})* | 'void') ')' 
+	{		
+		int stackIn = 0;
+		for (Variable var : parms) stackIn += var.type.size;
+		writer.write(Bytecode.FUNC, $ID.text, stackIn, $type.t.size);
+		
+		for (Variable var : parms) writer.store(var);
 	
 		functions.add($ID.text, $type.t);
 	}
