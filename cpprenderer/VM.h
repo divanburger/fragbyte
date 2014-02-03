@@ -14,6 +14,8 @@ struct VM {
 		: program(program), instances(instances) {
 		cout << "Memory usage estimate: " << (instances * (program.maxStack + program.maxSlots) * sizeof(float) / 1024) << "kB" << endl;
 
+		stackFlags = (int*)calloc(program.maxStack, sizeof(int));
+		stackConst = (float*)calloc(program.maxStack, sizeof(float));
 		stack = (float*)calloc(instances * program.maxStack, sizeof(float));
 		slots = (float*)calloc(instances * program.maxSlots, sizeof(float));
 
@@ -26,6 +28,8 @@ struct VM {
 	}
 
 	~VM() {
+		free(stackFlags);
+		free(stackConst);
 		free(stack);
 		free(slots);
 
@@ -60,6 +64,30 @@ struct VM {
 		return res;
 	}
 
+	void fullLoadConstant(int sp, int n) {
+		for (int j = n; j > 0; j--) {
+			int index = sp-j;
+			if (stackFlags[index] == CONSTANT) {
+				stackFlags[index] = NONE;
+				for (int i = 0; i < instances; i++) {
+					stack[i+index*instances] = stackConst[index];
+				}
+			}
+		}
+	}
+
+	void storeConstant(int sp, int n, int slot) {
+		for (int j = 0; j < n; j++) {
+			int index = sp-(n-j);
+			if (stackFlags[index] == CONSTANT) {				
+				for (int i = 0; i < instances; i++) {
+					slots[i+(j+slot)*instances] = stackConst[index];
+				}
+			} else
+				memcpy(&slots[(j+slot)*instances], &stack[index*instances], sizeof(float)*instances);
+		}
+	}	
+
 	bool doInstr() {
 		const Instruction& instr = program.instructions[ip];
 		
@@ -83,53 +111,54 @@ struct VM {
 
 		switch (instr.bytecode) {
 			case Bytecode::LDC:
-				//cout << "LDC " << instr.fvalue << endl;
-				for (int i = 0; i < instances; i++) {
-					stack[i+sp*instances] = instr.fvalue;
-				}
+				stackFlags[sp] = CONSTANT;
+				stackConst[sp] = instr.fvalue;
+				// for (int i = 0; i < instances; i++) stack[i+sp*instances] = instr.fvalue;
 				sp++;
 				break;
 			case Bytecode::LDC2:
-				//cout << "LDC2 " << instr.fvalue << endl;
-				for (int i = 0; i < instances*2; i++) {
-					stack[i+sp*instances] = instr.fvalue;
+				for (int i = 0; i < 2; i++) {
+					stackFlags[sp+i] = CONSTANT;
+					stackConst[sp+i] = instr.fvalue;
 				}
+				// for (int i = 0; i < instances*2; i++) stack[i+sp*instances] = instr.fvalue;
 				sp+=2;
 				break;
 			case Bytecode::LDC3:
-				//cout << "LDC3 " << instr.fvalue << endl;
-				for (int i = 0; i < instances*3; i++) {
-					stack[i+sp*instances] = instr.fvalue;
+				for (int i = 0; i < 3; i++) {
+					stackFlags[sp+i] = CONSTANT;
+					stackConst[sp+i] = instr.fvalue;
 				}
+				// for (int i = 0; i < instances*3; i++) stack[i+sp*instances] = instr.fvalue;
 				sp+=3;
 				break;
 			case Bytecode::LDC4:
-				//cout << "LDC4 " << instr.fvalue << endl;
-				for (int i = 0; i < instances*4; i++) {
-					stack[i+sp*instances] = instr.fvalue;
+				for (int i = 0; i < 4; i++) {
+					stackFlags[sp+i] = CONSTANT;
+					stackConst[sp+i] = instr.fvalue;
 				}
+				// for (int i = 0; i < instances*4; i++) stack[i+sp*instances] = instr.fvalue;
 				sp+=4;
 				break;
 			case Bytecode::POP:
-				//cout << "POP" << endl;
 				sp--;
 				break;
 			case Bytecode::POP2:
-				//cout << "POP" << endl;
 				sp-=2;
 				break;
 			case Bytecode::POP3:
-				//cout << "POP" << endl;
 				sp-=3;
 				break;
 			case Bytecode::POP4:
-				//cout << "POP" << endl;
 				sp-=4;
 				break;
 			case Bytecode::DUPS:
 			case Bytecode::DUP:
-				//cout << "DUP" << endl;
-				memcpy(&stack[sp*instances], &stack[(sp-1)*instances], sizeof(float)*instances);
+				if (stackFlags[sp-1] == CONSTANT) {
+					stackFlags[sp] = CONSTANT;
+					stackConst[sp] = stackConst[sp-1];
+				} else
+					memcpy(&stack[sp*instances], &stack[(sp-1)*instances], sizeof(float)*instances);
 				sp++;
 				break;
 			case Bytecode::DUP2:
@@ -144,67 +173,110 @@ struct VM {
 				break;
 			case Bytecode::DUPS2:
 				//cout << "DUPS2" << endl;
-				memcpy(&stack[sp*instances], &stack[(sp-1)*instances], sizeof(float)*instances);
-				memcpy(&stack[(sp+1)*instances], &stack[(sp-1)*instances], sizeof(float)*instances);
+				if (stackFlags[sp-1] == CONSTANT) {
+					for (int i = 0; i < 2; i++) {
+						stackFlags[sp+i] = CONSTANT;
+						stackConst[sp+i] = stackConst[sp-1];
+					}
+				} else {
+					memcpy(&stack[sp*instances], &stack[(sp-1)*instances], sizeof(float)*instances);
+					memcpy(&stack[(sp+1)*instances], &stack[(sp-1)*instances], sizeof(float)*instances);
+				}
 				sp+=2;
 				break;
 			case Bytecode::DUPS3:
 				//cout << "DUPS3" << endl;
-				memcpy(&stack[sp*instances], &stack[(sp-1)*instances], sizeof(float)*instances);
-				memcpy(&stack[(sp+1)*instances], &stack[(sp-1)*instances], sizeof(float)*instances);
-				memcpy(&stack[(sp+2)*instances], &stack[(sp-1)*instances], sizeof(float)*instances);
+				if (stackFlags[sp-1] == CONSTANT) {
+					for (int i = 0; i < 3; i++) {
+						stackFlags[sp+i] = CONSTANT;
+						stackConst[sp+i] = stackConst[sp-1];
+					}
+				} else {
+					memcpy(&stack[sp*instances], &stack[(sp-1)*instances], sizeof(float)*instances);
+					memcpy(&stack[(sp+1)*instances], &stack[(sp-1)*instances], sizeof(float)*instances);
+					memcpy(&stack[(sp+2)*instances], &stack[(sp-1)*instances], sizeof(float)*instances);
+				}
 				sp+=3;
 				break;
 			case Bytecode::NEG:
-				//cout << "NEG" << endl;
-				for (int i = 0; i < instances; i++)
-				{
-					int st = i+sp*instances;
-					stack[st-1*instances] *= -1.0f;
+				if (stackFlags[sp-1] == CONSTANT) {
+					stackConst[sp-1] = -stackConst[sp-1];
+				} else {
+					for (int i = 0; i < instances; i++)
+					{
+						int st = i+sp*instances;
+						stack[st-1*instances] *= -1.0f;
+					}
 				}
 				break;
 			case Bytecode::NEG2:
-				//cout << "NEG2" << endl;
-				for (int i = 0; i < instances*2; i++)
-				{
-					int st = i+sp*instances;
-					stack[st-2*instances] *= -1.0f;
+				for (int j = 2; j > 0; j--) {
+					int index = sp-j;
+					if (stackFlags[index] == CONSTANT) {
+						stackConst[index] = -stackConst[index];
+					} else {
+						for (int i = 0; i < instances; i++)
+						{
+							int st = i+sp*instances;
+							stack[st-j*instances] *= -1.0f;
+						}
+					}
 				}
 				break;
 			case Bytecode::NEG3:
-				//cout << "NEG3" << endl;
-				for (int i = 0; i < instances*3; i++)
-				{
-					int st = i+sp*instances;
-					stack[st-3*instances] *= -1.0f;
+				for (int j = 3; j > 0; j--) {
+					int index = sp-j;
+					if (stackFlags[index] == CONSTANT) {
+						stackConst[index] = -stackConst[index];
+					} else {
+						for (int i = 0; i < instances; i++)
+						{
+							int st = i+sp*instances;
+							stack[st-j*instances] *= -1.0f;
+						}
+					}
 				}
 				break;
 			case Bytecode::NEG4:
-				//cout << "NEG4" << endl;
-				for (int i = 0; i < instances*4; i++)
-				{
-					int st = i+sp*instances;
-					stack[st-4*instances] *= -1.0f;
+				for (int j = 4; j > 0; j--) {
+					int index = sp-j;
+					if (stackFlags[index] == CONSTANT) {
+						stackConst[index] = -stackConst[index];
+					} else {
+						for (int i = 0; i < instances; i++)
+						{
+							int st = i+sp*instances;
+							stack[st-j*instances] *= -1.0f;
+						}
+					}
 				}
 				break;
 			case Bytecode::SQRT:
-				//cout << "SQRT" << endl;
-				for (int i = 0; i < instances; i++)
-				{
-					int st = i+sp*instances;
-					stack[st-1*instances] = sqrtf(stack[st-1*instances]);
+				if (stackFlags[sp-1] == CONSTANT) {
+					stackConst[sp-1] = sqrtf(stackConst[sp-1]);
+				} else {
+					for (int i = 0; i < instances; i++)
+					{
+						int st = i+sp*instances;
+						stack[st-1*instances] = sqrtf(stack[st-1*instances]);
+					}
 				}
 				break;
 			case Bytecode::RCP:
-				//cout << "RCP" << endl;
-				for (int i = 0; i < instances; i++)
-				{
-					int st = i+sp*instances;
-					stack[st-1*instances] = 1.0f / stack[st-1*instances];
+				if (stackFlags[sp-1] == CONSTANT) {
+					stackConst[sp-1] = 1.0f / stackConst[sp-1];
+				} else {
+					for (int i = 0; i < instances; i++)
+					{
+						int st = i+sp*instances;
+						stack[st-1*instances] = 1.0f / stack[st-1*instances];
+					}
 				}
 				break;
 			case Bytecode::SIN:
 				//cout << "SIN" << endl;
+				fullLoadConstant(sp, 1);
+
 				for (int i = 0; i < instances; i++)
 				{
 					int st = i+sp*instances;
@@ -213,6 +285,8 @@ struct VM {
 				break;
 			case Bytecode::SIN2:
 				//cout << "SIN2" << endl;
+				fullLoadConstant(sp, 2);
+
 				for (int i = 0; i < instances*2; i++)
 				{
 					int st = i+sp*instances;
@@ -221,6 +295,8 @@ struct VM {
 				break;
 			case Bytecode::SIN3:
 				//cout << "SIN3" << endl;
+				fullLoadConstant(sp, 3);
+
 				for (int i = 0; i < instances*3; i++)
 				{
 					int st = i+sp*instances;
@@ -229,6 +305,8 @@ struct VM {
 				break;
 			case Bytecode::SIN4:
 				//cout << "SIN4" << endl;
+				fullLoadConstant(sp, 4);
+				
 				for (int i = 0; i < instances*4; i++)
 				{
 					int st = i+sp*instances;
@@ -237,6 +315,8 @@ struct VM {
 				break;
 			case Bytecode::COS:
 				//cout << "COS" << endl;
+				fullLoadConstant(sp, 1);
+				
 				for (int i = 0; i < instances; i++)
 				{
 					int st = i+sp*instances;
@@ -245,6 +325,8 @@ struct VM {
 				break;
 			case Bytecode::COS2:
 				//cout << "COS2" << endl;
+				fullLoadConstant(sp, 2);
+				
 				for (int i = 0; i < instances*2; i++)
 				{
 					int st = i+sp*instances;
@@ -253,6 +335,8 @@ struct VM {
 				break;
 			case Bytecode::COS3:
 				//cout << "COS3" << endl;
+				fullLoadConstant(sp, 3);
+				
 				for (int i = 0; i < instances*3; i++)
 				{
 					int st = i+sp*instances;
@@ -261,6 +345,8 @@ struct VM {
 				break;
 			case Bytecode::COS4:
 				//cout << "COS4" << endl;
+				fullLoadConstant(sp, 4);
+				
 				for (int i = 0; i < instances*4; i++)
 				{
 					int st = i+sp*instances;
@@ -269,6 +355,8 @@ struct VM {
 				break;
 			case Bytecode::ATAN:
 				//cout << "ATAN" << endl;
+				fullLoadConstant(sp, 2);
+				
 				for (int i = 0; i < instances; i++)
 				{
 					int st = i+sp*instances;
@@ -280,6 +368,8 @@ struct VM {
 				break;
 			case Bytecode::LEN2:
 				//cout << "LEN2" << endl;
+				fullLoadConstant(sp, 2);
+				
 				for (int i = 0; i < instances; i++)
 				{
 					int st = i+sp*instances;
@@ -291,6 +381,8 @@ struct VM {
 				break;
 			case Bytecode::LEN3:
 				//cout << "LEN3" << endl;
+				fullLoadConstant(sp, 3);
+				
 				for (int i = 0; i < instances; i++)
 				{
 					int st = i+sp*instances;
@@ -303,6 +395,8 @@ struct VM {
 				break;
 			case Bytecode::LEN4:
 				//cout << "LEN4" << endl;
+				fullLoadConstant(sp, 4);
+				
 				for (int i = 0; i < instances; i++)
 				{
 					int st = i+sp*instances;
@@ -315,16 +409,38 @@ struct VM {
 				sp-=3;
 				break;
 			case Bytecode::ADD:
-				//cout << "ADD" << endl;
-				for (int i = 0; i < instances; i++)
-				{
-					int st = i+sp*instances;
-					stack[st-2*instances] += stack[st-1*instances];
+				if (stackFlags[sp-2] == CONSTANT) {
+					stackFlags[sp-2] = NONE;
+					fullLoadConstant(sp, 1);
+					
+					for (int i = 0; i < instances; i++)
+					{
+						int st = i+sp*instances;
+						stack[st-2*instances] = stackConst[sp-2] + stack[st-1*instances];
+					}
+				} else if (stackFlags[sp-1] == CONSTANT) {
+					stackFlags[sp-1] = NONE;
+					
+					for (int i = 0; i < instances; i++)
+					{
+						int st = i+sp*instances;
+						stack[st-2*instances] += stackConst[sp-1];
+					}
+				} else {
+					fullLoadConstant(sp, 2);
+					
+					for (int i = 0; i < instances; i++)
+					{
+						int st = i+sp*instances;
+						stack[st-2*instances] += stack[st-1*instances];
+					}
 				}
 				sp--;
 				break;
 			case Bytecode::ADD2:
 				//cout << "ADD2" << endl;
+				fullLoadConstant(sp, 4);
+				
 				for (int i = 0; i < instances*2; i++)
 				{
 					int st = i+sp*instances;
@@ -334,6 +450,8 @@ struct VM {
 				break;
 			case Bytecode::ADD3:
 				//cout << "ADD3" << endl;
+				fullLoadConstant(sp, 6);
+				
 				for (int i = 0; i < instances*3; i++)
 				{
 					int st = i+sp*instances;
@@ -343,6 +461,8 @@ struct VM {
 				break;
 			case Bytecode::ADD4:
 				//cout << "ADD4" << endl;
+				fullLoadConstant(sp, 8);
+				
 				for (int i = 0; i < instances*4; i++)
 				{
 					int st = i+sp*instances;
@@ -351,16 +471,30 @@ struct VM {
 				sp-=4;
 				break;
 			case Bytecode::SUB:
-				//cout << "SUB" << endl;
-				for (int i = 0; i < instances; i++)
-				{
-					int st = i+sp*instances;
-					stack[st-2*instances] -= stack[st-1*instances];
+				if (stackFlags[sp-2] == CONSTANT) {
+					stackFlags[sp-2] = NONE;
+					fullLoadConstant(sp, 1);
+					
+					for (int i = 0; i < instances; i++)
+					{
+						int st = i+sp*instances;
+						stack[st-2*instances] = stackConst[sp-2] - stack[st-1*instances];
+					}	
+				} else {
+					fullLoadConstant(sp, 2);
+					
+					for (int i = 0; i < instances; i++)
+					{
+						int st = i+sp*instances;
+						stack[st-2*instances] -= stack[st-1*instances];
+					}
 				}
 				sp--;
 				break;
 			case Bytecode::SUB2:
 				//cout << "SUB2" << endl;
+				fullLoadConstant(sp, 4);
+				
 				for (int i = 0; i < instances*2; i++)
 				{
 					int st = i+sp*instances;
@@ -370,6 +504,8 @@ struct VM {
 				break;
 			case Bytecode::SUB3:
 				//cout << "SUB3" << endl;
+				fullLoadConstant(sp, 6);
+				
 				for (int i = 0; i < instances*3; i++)
 				{
 					int st = i+sp*instances;
@@ -379,6 +515,8 @@ struct VM {
 				break;
 			case Bytecode::SUB4:
 				//cout << "SUB4" << endl;
+				fullLoadConstant(sp, 8);
+				
 				for (int i = 0; i < instances*4; i++)
 				{
 					int st = i+sp*instances;
@@ -387,16 +525,38 @@ struct VM {
 				sp-=4;
 				break;
 			case Bytecode::MUL:
-				//cout << "MUL" << endl;
-				for (int i = 0; i < instances; i++)
-				{
-					int st = i+sp*instances;
-					stack[st-2*instances] *= stack[st-1*instances];
+				if (stackFlags[sp-2] == CONSTANT) {
+					stackFlags[sp-2] = NONE;
+					fullLoadConstant(sp, 1);
+					
+					for (int i = 0; i < instances; i++)
+					{
+						int st = i+sp*instances;
+						stack[st-2*instances] = stackConst[sp-2] * stack[st-1*instances];
+					}	
+				} else if (stackFlags[sp-1] == CONSTANT) {
+					stackFlags[sp-1] = NONE;
+
+					for (int i = 0; i < instances; i++)
+					{
+						int st = i+sp*instances;
+						stack[st-2*instances] *= stackConst[sp-1];
+					}
+				} else {
+					fullLoadConstant(sp, 2);
+					
+					for (int i = 0; i < instances; i++)
+					{
+						int st = i+sp*instances;
+						stack[st-2*instances] *= stack[st-1*instances];
+					}
 				}
 				sp--;
 				break;
 			case Bytecode::MUL2:
 				//cout << "MUL2" << endl;
+				fullLoadConstant(sp, 4);
+				
 				for (int i = 0; i < instances*2; i++)
 				{
 					int st = i+sp*instances;
@@ -406,6 +566,8 @@ struct VM {
 				break;
 			case Bytecode::MUL3:
 				//cout << "MUL3" << endl;
+				fullLoadConstant(sp, 6);
+				
 				for (int i = 0; i < instances*3; i++)
 				{
 					int st = i+sp*instances;
@@ -415,6 +577,8 @@ struct VM {
 				break;
 			case Bytecode::MUL4:
 				//cout << "MUL4" << endl;
+				fullLoadConstant(sp, 8);
+				
 				for (int i = 0; i < instances*4; i++)
 				{
 					int st = i+sp*instances;
@@ -423,16 +587,30 @@ struct VM {
 				sp-=4;
 				break;
 			case Bytecode::DIV:
-				//cout << "DIV" << endl;
-				for (int i = 0; i < instances; i++)
-				{
-					int st = i+sp*instances;
-					stack[st-2*instances] /= stack[st-1*instances];
+				if (stackFlags[sp-2] == CONSTANT) {
+					stackFlags[sp-2] = NONE;
+					fullLoadConstant(sp, 1);
+					
+					for (int i = 0; i < instances; i++)
+					{
+						int st = i+sp*instances;
+						stack[st-2*instances] = stackConst[sp-2] / stack[st-1*instances];
+					}	
+				} else {
+					fullLoadConstant(sp, 2);
+					
+					for (int i = 0; i < instances; i++)
+					{
+						int st = i+sp*instances;
+						stack[st-2*instances] /= stack[st-1*instances];
+					}
 				}
 				sp--;
 				break;
 			case Bytecode::DIV2:
 				//cout << "DIV2" << endl;
+				fullLoadConstant(sp, 4);
+				
 				for (int i = 0; i < instances*2; i++)
 				{
 					int st = i+sp*instances;
@@ -442,6 +620,8 @@ struct VM {
 				break;
 			case Bytecode::DIV3:
 				//cout << "DIV3" << endl;
+				fullLoadConstant(sp, 6);
+				
 				for (int i = 0; i < instances*3; i++)
 				{
 					int st = i+sp*instances;
@@ -451,6 +631,8 @@ struct VM {
 				break;
 			case Bytecode::DIV4:
 				//cout << "DIV4" << endl;
+				fullLoadConstant(sp, 8);
+				
 				for (int i = 0; i < instances*4; i++)
 				{
 					int st = i+sp*instances;
@@ -460,6 +642,8 @@ struct VM {
 				break;
 			case Bytecode::MOD:
 				//cout << "MOD" << endl;
+				fullLoadConstant(sp, 2);
+				
 				for (int i = 0; i < instances; i++)
 				{
 					int st = i+sp*instances;
@@ -469,6 +653,8 @@ struct VM {
 				break;
 			case Bytecode::MOD2:
 				//cout << "MOD2" << endl;
+				fullLoadConstant(sp, 4);
+				
 				for (int i = 0; i < instances*2; i++)
 				{
 					int st = i+sp*instances;
@@ -478,6 +664,8 @@ struct VM {
 				break;
 			case Bytecode::MOD3:
 				//cout << "MOD3" << endl;
+				fullLoadConstant(sp, 6);
+				
 				for (int i = 0; i < instances*3; i++)
 				{
 					int st = i+sp*instances;
@@ -487,6 +675,8 @@ struct VM {
 				break;
 			case Bytecode::MOD4:
 				//cout << "MOD4" << endl;
+				fullLoadConstant(sp, 8);
+				
 				for (int i = 0; i < instances*4; i++)
 				{
 					int st = i+sp*instances;
@@ -495,16 +685,32 @@ struct VM {
 				sp-=4;
 				break;
 			case Bytecode::MAD:
-				//cout << "MAD" << endl;
-				sp-=2;
-				for (int i = 0; i < instances; i++)
-				{
-					int st = i+sp*instances;
-					stack[st-instances] += stack[st+instances] * stack[st];
+				if (stackFlags[sp-3] == CONSTANT && stackFlags[sp-2] == CONSTANT) {
+					stackFlags[sp-3] = NONE;
+					fullLoadConstant(sp, 1);
+					
+					for (int i = 0; i < instances; i++)
+					{
+						int st = i+sp*instances;
+						stack[st-3*instances] = stack[st-1*instances] * stackConst[sp-2] + stackConst[sp-3];
+					}
+
+					sp-=2;
+				} else {
+					fullLoadConstant(sp, 3);
+					
+					sp-=2;
+					for (int i = 0; i < instances; i++)
+					{
+						int st = i+sp*instances;
+						stack[st-instances] += stack[st+instances] * stack[st];
+					}
 				}
 				break;
 			case Bytecode::MAD2:
 				//cout << "MAD2" << endl;
+				fullLoadConstant(sp, 6);
+				
 				sp-=4;
 				for (int i = 0; i < instances*2; i++)
 				{
@@ -514,6 +720,8 @@ struct VM {
 				break;
 			case Bytecode::MAD3:
 				//cout << "MAD3" << endl;
+				fullLoadConstant(sp, 9);
+
 				sp-=6;
 				for (int i = 0; i < instances*3; i++)
 				{
@@ -523,6 +731,8 @@ struct VM {
 				break;
 			case Bytecode::MAD4:
 				//cout << "MAD4" << endl;
+				fullLoadConstant(sp, 12);
+
 				sp-=8;
 				for (int i = 0; i < instances*4; i++)
 				{
@@ -532,6 +742,8 @@ struct VM {
 				break;
 			case Bytecode::MIN:
 				//cout << "MIN" << endl;
+				fullLoadConstant(sp, 2);
+
 				sp--;
 				for (int i = 0; i < instances; i++)
 				{
@@ -541,6 +753,8 @@ struct VM {
 				break;
 			case Bytecode::MIN2:
 				//cout << "MIN2" << endl;
+				fullLoadConstant(sp, 4);
+				
 				sp-=2;
 				for (int i = 0; i < instances*2; i++)
 				{
@@ -550,6 +764,8 @@ struct VM {
 				break;
 			case Bytecode::MIN3:
 				//cout << "MIN3" << endl;
+				fullLoadConstant(sp, 6);
+				
 				sp-=3;
 				for (int i = 0; i < instances*3; i++)
 				{
@@ -559,6 +775,8 @@ struct VM {
 				break;
 			case Bytecode::MIN4:
 				//cout << "MIN4" << endl;
+				fullLoadConstant(sp, 8);
+				
 				sp-=4;
 				for (int i = 0; i < instances*4; i++)
 				{
@@ -568,6 +786,8 @@ struct VM {
 				break;
 			case Bytecode::MAX:
 				//cout << "MAX" << endl;
+				fullLoadConstant(sp, 2);
+				
 				sp--;
 				for (int i = 0; i < instances; i++)
 				{
@@ -577,6 +797,8 @@ struct VM {
 				break;
 			case Bytecode::MAX2:
 				//cout << "MAX2" << endl;
+				fullLoadConstant(sp, 4);
+				
 				sp-=2;
 				for (int i = 0; i < instances*2; i++)
 				{
@@ -586,6 +808,8 @@ struct VM {
 				break;
 			case Bytecode::MAX3:
 				//cout << "MAX3" << endl;
+				fullLoadConstant(sp, 6);
+				
 				sp-=3;
 				for (int i = 0; i < instances*3; i++)
 				{
@@ -595,6 +819,8 @@ struct VM {
 				break;
 			case Bytecode::MAX4:
 				//cout << "MAX4" << endl;
+				fullLoadConstant(sp, 8);
+				
 				sp-=4;
 				for (int i = 0; i < instances; i++)
 				{
@@ -604,6 +830,8 @@ struct VM {
 				break;
 			case Bytecode::MIX:
 				//cout << "MIX" << endl;
+				fullLoadConstant(sp, 3);
+				
 				for (int i = 0; i < instances; i++)
 				{
 					int st = i+sp*instances;
@@ -617,6 +845,8 @@ struct VM {
 				break;
 			case Bytecode::MIX2:
 				//cout << "MIX2" << endl;
+				fullLoadConstant(sp, 6);
+				
 				for (int i = 0; i < instances*2; i++)
 				{
 					int st = i+sp*instances;
@@ -630,6 +860,8 @@ struct VM {
 				break;
 			case Bytecode::MIX3:
 				//cout << "MIX3" << endl;
+				fullLoadConstant(sp, 9);
+				
 				for (int i = 0; i < instances*3; i++)
 				{
 					int st = i+sp*instances;
@@ -643,6 +875,8 @@ struct VM {
 				break;
 			case Bytecode::MIX4:
 				//cout << "MIX4" << endl;
+				fullLoadConstant(sp, 12);
+				
 				for (int i = 0; i < instances*4; i++)
 				{
 					int st = i+sp*instances;
@@ -656,6 +890,8 @@ struct VM {
 				break;
 			case Bytecode::ABS:
 				//cout << "ABS" << endl;
+				fullLoadConstant(sp, 1);
+				
 				for (int i = 0; i < instances; i++)
 				{
 					int st = i+sp*instances;
@@ -664,6 +900,8 @@ struct VM {
 				break;
 			case Bytecode::ABS2:
 				//cout << "ABS2" << endl;
+				fullLoadConstant(sp, 2);
+				
 				for (int i = 0; i < instances*2; i++)
 				{
 					int st = i+sp*instances;
@@ -672,6 +910,8 @@ struct VM {
 				break;
 			case Bytecode::ABS3:
 				//cout << "ABS3" << endl;
+				fullLoadConstant(sp, 3);
+				
 				for (int i = 0; i < instances*3; i++)
 				{
 					int st = i+sp*instances;
@@ -680,6 +920,8 @@ struct VM {
 				break;
 			case Bytecode::ABS4:
 				//cout << "ABS4" << endl;
+				fullLoadConstant(sp, 4);
+				
 				for (int i = 0; i < instances*4; i++)
 				{
 					int st = i+sp*instances;
@@ -688,6 +930,8 @@ struct VM {
 				break;
 			case Bytecode::STEP:
 				//cout << "STEP" << endl;
+				fullLoadConstant(sp, 2);
+				
 				for (int i = 0; i < instances; i++)
 				{
 					int st = i+sp*instances;
@@ -700,6 +944,8 @@ struct VM {
 				break;
 			case Bytecode::SMOOTHSTEP:
 				//cout << "SMOOTHSTEP" << endl;
+				fullLoadConstant(sp, 3);
+				
 				for (int i = 0; i < instances; i++)
 				{
 					int st = i+sp*instances;
@@ -713,6 +959,8 @@ struct VM {
 				break;
 			case Bytecode::SMOOTHSTEPR:
 				//cout << "SMOOTHSTEP" << endl;
+				fullLoadConstant(sp, 3);
+				
 				for (int i = 0; i < instances; i++)
 				{
 					int st = i+sp*instances;
@@ -726,6 +974,8 @@ struct VM {
 				break;
 			case Bytecode::DP2:
 				//cout << "DP3" << endl;
+				fullLoadConstant(sp, 4);
+				
 				for (int i = 0; i < instances; i++)
 				{
 					int st = i+sp*instances;
@@ -737,6 +987,8 @@ struct VM {
 				break;
 			case Bytecode::DP3:
 				//cout << "DP3" << endl;
+				fullLoadConstant(sp, 6);
+				
 				for (int i = 0; i < instances; i++)
 				{
 					int st = i+sp*instances;
@@ -749,6 +1001,8 @@ struct VM {
 				break;
 			case Bytecode::NORM3:
 				//cout << "NORM3" << endl;
+				fullLoadConstant(sp, 3);
+				
 				for (int i = 0; i < instances; i++)
 				{
 					int st = i+sp*instances;
@@ -763,43 +1017,43 @@ struct VM {
 				break;
 			case Bytecode::LOAD:
 				//cout << "LOAD " << instr.ivalue << endl;
+				stackFlags[sp] = NONE;
 				memcpy(&stack[sp*instances], &slots[instr.ivalue*instances], sizeof(float)*instances);
 				sp++;
 				break;
 			case Bytecode::LOAD2:
 				//cout << "LOAD2 " << instr.ivalue << endl;
+				for (int i = 0; i < 2; i++) stackFlags[sp+i] = NONE;
 				memcpy(&stack[sp*instances], &slots[instr.ivalue*instances], sizeof(float)*instances*2);
 				sp+=2;
 				break;
 			case Bytecode::LOAD3:
 				//cout << "LOAD3 " << instr.ivalue << endl;
+				for (int i = 0; i < 3; i++) stackFlags[sp+i] = NONE;
 				memcpy(&stack[sp*instances], &slots[instr.ivalue*instances], sizeof(float)*instances*3);
 				sp+=3;
 				break;
 			case Bytecode::LOAD4:
 				//cout << "LOAD4 " << instr.ivalue << endl;
+				for (int i = 0; i < 4; i++) stackFlags[sp+i] = NONE;
 				memcpy(&stack[sp*instances], &slots[instr.ivalue*instances], sizeof(float)*instances*4);
 				sp+=4;
 				break;
 			case Bytecode::STORE:
-				//cout << "STORE " << instr.ivalue << endl;
+				storeConstant(sp, 1, instr.ivalue);
 				sp--;
-				memcpy(&slots[instr.ivalue*instances], &stack[sp*instances], sizeof(float)*instances);
 				break;
 			case Bytecode::STORE2:
-				//cout << "STORE2 " << instr.ivalue << endl;
+				storeConstant(sp, 2, instr.ivalue);
 				sp-=2;
-				memcpy(&slots[instr.ivalue*instances], &stack[sp*instances], sizeof(float)*instances*2);
 				break;
 			case Bytecode::STORE3:
-				//cout << "STORE3 " << instr.ivalue << endl;
+				storeConstant(sp, 3, instr.ivalue);
 				sp-=3;
-				memcpy(&slots[instr.ivalue*instances], &stack[sp*instances], sizeof(float)*instances*3);
 				break;
 			case Bytecode::STORE4:
-				//cout << "STORE4 " << instr.ivalue << endl;
+				storeConstant(sp, 4, instr.ivalue);
 				sp-=4;
-				memcpy(&slots[instr.ivalue*instances], &stack[sp*instances], sizeof(float)*instances*4);
 				break;
 			case Bytecode::RETURN:
 				//cout << "RETURN" << endl;
@@ -855,6 +1109,10 @@ struct VM {
 	std::stack<int>				callStack;
 	std::stack<pair<int, int>>	repeatStack;
 
+	enum {NONE = 0, CONSTANT = 1};
+
+	int   *stackFlags;
+	float *stackConst;
 	float *stack;
 	float *slots;
 

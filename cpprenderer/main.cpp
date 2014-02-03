@@ -27,7 +27,7 @@ int main(int argc, char const *argv[]) {
 	SDL_Surface* surface = SDL_GetWindowSurface(window);
 
 	Program program;
-	program.parse(argc == 2 ? argv[1] : "../tests/test3.byte");
+	program.parse(argc == 2 ? argv[1] : "../tests/test4.byte");
 
 	VM vm(program, width*height);
 
