@@ -1,12 +1,14 @@
 package whitesquare.glslcross.glslcompiler;
 
 import java.io.IOException;
+import java.util.ArrayList;
 
 import org.antlr.v4.runtime.ANTLRFileStream;
 import org.antlr.v4.runtime.CommonTokenStream;
 
 import whitesquare.glslcross.bytecode.Program;
 import whitesquare.glslcross.bytecode.analyzer.StackAnalyzer;
+import whitesquare.glslcross.bytecode.optimizers.BlockOptimizer;
 import whitesquare.glslcross.bytecode.optimizers.CombinerOptimizer;
 import whitesquare.glslcross.bytecode.optimizers.Optimizer;
 import whitesquare.glslcross.bytecode.optimizers.StackOptimizer;
@@ -16,25 +18,27 @@ import whitesquare.glslcross.glslcompiler.GLSLLexer;
 import whitesquare.glslcross.glslcompiler.GLSLParser;
 
 public class GLSLCompiler {
-	public String prefix = "tests/test3"; 
+	public String prefix = "tests/test1"; 
 	
 	public GLSLCompiler() {
 		parse(prefix + ".glsl");
 	}
 	
 	public void optimize(Program program) {
-		Optimizer part1 = new StoreLoadOptimizer();
-		Optimizer part2 = new UnusedSlotOptimizer();
-		Optimizer part3 = new StackOptimizer();
-		Optimizer part4 = new CombinerOptimizer();
+		ArrayList<Optimizer> optimizers = new ArrayList<Optimizer>();
+		
+		optimizers.add(new StoreLoadOptimizer());
+		optimizers.add(new UnusedSlotOptimizer());
+		optimizers.add(new StackOptimizer());
+		optimizers.add(new CombinerOptimizer());
+		optimizers.add(new BlockOptimizer());
 		
 		System.out.println("Before optimization: " + program.instructions.size() + " instr - " + program.maxSlots + " slots");
 		
-		for (int i = 0; i < 2; i++) {
-			boolean changes = part1.optimize(program);
-			changes |= part2.optimize(program);
-			changes |= part3.optimize(program);
-			changes |= part4.optimize(program);
+		for (int i = 0; i < 3; i++) {
+			boolean changes = false;
+			for (Optimizer optimizer : optimizers)
+				changes |= optimizer.optimize(program);
 			System.out.println("After phase " + i + ": " + program.instructions.size() + " instr - " + program.maxSlots + " slots");
 			if (!changes) break;
 		}
@@ -54,8 +58,9 @@ public class GLSLCompiler {
 			parser.glsl();
 			
 			Program program = bytecodeWriter.getProgram();
+			program.writeOut(prefix + "_pre.byte");
 			
-			StackAnalyzer stackAnalyzer = new StackAnalyzer(false);
+			StackAnalyzer stackAnalyzer = new StackAnalyzer(true);
 			if (!stackAnalyzer.analyze(program)) {
 				System.out.println("Resulting program is invalid!!! (Before optimization)");
 				return;
@@ -68,6 +73,8 @@ public class GLSLCompiler {
 			
 			StackAnalyzer stackAnalyzerOpt = new StackAnalyzer(true);
 			boolean valid = stackAnalyzerOpt.analyze(program);
+			
+			System.out.println("Final output : " + program.instructions.size() + " instr - " + program.maxSlots + " slots");
 			
 			if (!valid) {
 				System.out.println("Resulting program is invalid!!!");

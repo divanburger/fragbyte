@@ -11,21 +11,7 @@ public class StackOptimizer implements Optimizer {
 	private int[] stackInstr = new int[32];
 	private int[] stackPos = new int[32];
 	private int[] instrStackSize;
-	
-	public int isVarChannelOpen(ArrayList<Instruction> instrs, int fromIndex, int slot) {
-		int startSP = instrStackSize[fromIndex];
-		int i = fromIndex - 1;
-		for (; i >= 0; i--) {
-			if (startSP > instrStackSize[fromIndex]) return -1;
-			
-			Instruction instr = instrs.get(i);
-			if (instr.bytecode == Bytecode.STORE && instr.valueInt == slot)
-				return i;
-		}
 		
-		return i;
-	}
-	
 	@Override
 	public boolean optimize(Program program) {
 		ArrayList<Instruction> instrs = program.instructions;
@@ -140,24 +126,19 @@ public class StackOptimizer implements Optimizer {
 						changed = true;
 						break;
 					}
-				} else if (instr.bytecode == Bytecode.MUL) {
-					int k = stackInstr[sp+1];
-					Instruction second = instrs.get(k);
+				} else if (instr.bytecode == Bytecode.ADD) {
+					// Move constant loads to the right hand side of an add
+					int k = stackInstr[sp];
+					Instruction leftSide = instrs.get(k);
+					Instruction prev = instrs.get(i-1);
 					
-					if (second.bytecode == Bytecode.LOAD) {
-						System.out.println("Possible back channel");
-						int si = isVarChannelOpen(instrs, i, second.valueInt);
-						if (si >= 0) {
-							System.out.println("!!! Found back channel");
-							System.out.println("Store: "+ si);
-							System.out.println("Load: " + k);
-							instrs.remove(k);
-							instrs.remove(si);
-							changed = true;
-							break;
-						}
+					if (leftSide.bytecode == Bytecode.LDC && prev.bytecode != Bytecode.LDC) {
+						instrs.add(i, leftSide);
+						instrs.remove(k);
+						changed = true;
+						break;
 					}
-					
+				} else if (instr.bytecode == Bytecode.MUL) {
 					boolean allConst = true;
 					
 					for (int j = 0; j < 2; j++) {
@@ -178,6 +159,18 @@ public class StackOptimizer implements Optimizer {
 						instrs.remove(b);
 						if (a != b) instrs.remove(a);
 						
+						changed = true;
+						break;
+					}
+					
+					// Move constant loads to the right hand side of a multiply
+					int k = stackInstr[sp];
+					Instruction leftSide = instrs.get(k);
+					Instruction prev = instrs.get(i-1);
+					
+					if (leftSide.bytecode == Bytecode.LDC && prev.bytecode != Bytecode.LDC) {
+						instrs.add(i, leftSide);
+						instrs.remove(k);
 						changed = true;
 						break;
 					}

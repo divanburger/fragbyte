@@ -29,7 +29,8 @@ public class StoreLoadOptimizer implements Optimizer {
 			// Fake a load on the end of a repeat
 			if (instr.bytecode == Bytecode.ENDREPEAT) {
 				for (int j = 0; j < program.maxSlots; j++)
-					lastLoad[j] = i;
+					if (lastStore[j] >= 0)
+						lastLoad[j] = i;
 				continue;
 			}
 			

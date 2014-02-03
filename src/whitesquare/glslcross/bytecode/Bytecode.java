@@ -41,6 +41,18 @@ public enum Bytecode {
 	Bytecode(int ops) {this.ops = ops;}
 	Bytecode(int ops, int in, int out) {this.ops = ops; this.stackIn = in; this.stackOut = out;}
 	
+	public boolean isLoad() {
+		return name().startsWith("LOAD");
+	}
+	
+	public boolean isLoadConst() {
+		return name().startsWith("LDC");
+	}
+	
+	public boolean isStore() {
+		return name().startsWith("STORE");
+	}
+	
 	public int getWidth() {
 		char c = name().charAt(name().length()-1);
 		if (c == '2') return 2;

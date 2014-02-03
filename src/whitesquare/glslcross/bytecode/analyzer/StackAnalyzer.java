@@ -29,6 +29,9 @@ public class StackAnalyzer implements Analyzer {
 			
 			if (stackIn > stack) {
 				System.out.println("Instruction uses more than what is in the stack!!");
+				System.out.println(" * Instr: " + instr);
+				System.out.println(" * Stack Use: " + stackIn);
+				System.out.println(" * Stack Left: " + stack);
 				return false;
 			}
 			
