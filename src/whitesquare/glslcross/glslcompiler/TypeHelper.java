@@ -2,15 +2,27 @@ package whitesquare.glslcross.glslcompiler;
 
 import org.antlr.v4.runtime.Token;
 
+import whitesquare.glslcross.ast.BinaryOp;
+import whitesquare.glslcross.ast.BuiltInCall;
+import whitesquare.glslcross.ast.TernaryOp;
+import whitesquare.glslcross.ast.UnaryOp;
+import whitesquare.glslcross.ast.Value;
 import whitesquare.glslcross.bytecode.Bytecode;
 
 public class TypeHelper {
-	private BytecodeWriter writer = null;
-	private LogWriter log = null;
+	private LogWriter log;
 	
-	public void setWriters(BytecodeWriter writer, LogWriter log) {
-		this.writer = writer;
+	public TypeHelper(LogWriter log) {
 		this.log = log;
+	}
+	
+	Value writeUnaryOp(Token token, Bytecode code, Value a) {
+		if (a == null) {
+			log.error(token, "One is null: " + code + " " + a);
+			return null;
+		}
+		
+		return new UnaryOp(a.type, code.name(), a);
 	}
 	
 	Value writeBinaryOp(Token token, Bytecode code, Value a, Value b) {
@@ -19,16 +31,7 @@ public class TypeHelper {
 			return null;
 		}
 		
-		if (a.type.size == b.type.size) {
-			writer.writeWideOp(code, a);
-			return new Value(a.type, a.constant && b.constant);
-		}
-		
-		if (b.type.size == 1) {
-			writer.writeWideOp(Bytecode.DUPS, a.type.size - b.type.size);
-			writer.writeWideOp(code, a);
-			return new Value(a.type, a.constant && b.constant);
-		}
+		if (a.type.size == b.type.size || b.type.size == 1) return new BinaryOp(a.type, code.name(), a, b);
 		
 		log.error(token, "'" + a + "' and '" + b + "' are incompatible (Binary Op)");
 		return null;
@@ -45,16 +48,7 @@ public class TypeHelper {
 			return null;
 		}
 		
-		if (b.type.size == c.type.size) {
-			writer.writeWideOp(code, a);
-			return new Value(a.type, a.constant && b.constant && c.constant);
-		}
-		
-		if (c.type.size == 1) {
-			writer.writeWideOp(Bytecode.DUPS, b.type.size - c.type.size);
-			writer.writeWideOp(code, a);
-			return new Value(a.type, a.constant && b.constant && c.constant);
-		}
+		if (b.type.size == c.type.size || c.type.size == 1) return new TernaryOp(a.type, code.name(), a, b, c);
 		
 		log.error(token, "'" + c + "' is incompatible (Ternary Op)");
 		return null;

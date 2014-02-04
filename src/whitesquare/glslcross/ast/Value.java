@@ -1,6 +1,6 @@
-package whitesquare.glslcross.glslcompiler;
+package whitesquare.glslcross.ast;
 
-public class Value {
+public class Value extends Node {
 	public boolean constant;
 	public Type type;
 	public int intValue;
@@ -30,11 +30,16 @@ public class Value {
 	public boolean isCompatible(Value other) {
 		return type.isCompatible(other.type);
 	}
+
+	@Override
+	public void visit(ASTVisitor visitor) {
+		visitor.visitValue(this);
+	}
 	
 	@Override
 	public String toString() {
-		String str = "";
-		if (constant) str += "const ";
-		return str + type.toString();
+		String str = "(";
+		if (constant) str += (type.integer ? intValue : floatValue) + " : ";
+		return str + type.toString() + ")";
 	}
 }

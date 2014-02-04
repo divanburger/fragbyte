@@ -4,6 +4,7 @@ package whitesquare.glslcross.glslcompiler;
 import java.util.Stack;
 
 import whitesquare.glslcross.bytecode.Bytecode;
+import whitesquare.glslcross.ast.*;
 
 import org.antlr.v4.runtime.atn.*;
 import org.antlr.v4.runtime.dfa.DFA;
@@ -68,7 +69,8 @@ public class GLSLParser extends Parser {
 	private Variables variables = new Variables();
 	private Types types = new Types();
 	private LogWriter log = new LogWriter();
-	private TypeHelper typeHelper = new TypeHelper();
+	private TypeHelper typeHelper = new TypeHelper(log);
+	private BytecodeVisitor visitor = null;
 	private Type tInt;
 	private Type tFloat;
 	private Type tVec2;
@@ -78,7 +80,6 @@ public class GLSLParser extends Parser {
 
 	public void setBytecodeWriter(BytecodeWriter writer) {
 		this.writer = writer;
-		typeHelper.setWriters(writer, log);
 	}
 
 	public GLSLParser(TokenStream input) {
@@ -133,7 +134,7 @@ public class GLSLParser extends Parser {
 					tVec3 = types.add("vec3", 3, false);
 					tVec4 = types.add("vec4", 4, false);
 					tVoid = types.add("void", 0, true);
-				
+						
 					Variable fragColor = variables.add("gl_FragColor", tVec4, false);
 					Variable fragCoord = variables.add("gl_FragCoord", tVec2, true);
 							
@@ -154,7 +155,8 @@ public class GLSLParser extends Parser {
 				_la = _input.LA(1);
 			}
 
-					variables.add("__tempf", tVec4, false);
+					Variable tempVar = variables.add("__tempf", tVec4, false);
+					visitor = new BytecodeVisitor(writer, log, tempVar);
 				
 			setState(50);
 			_errHandler.sync(this);
@@ -531,6 +533,7 @@ public class GLSLParser extends Parser {
 		public Variable var;
 		public TypeContext type;
 		public Token ID;
+		public ExpressionContext expression;
 		public ExpressionContext expression() {
 			return getRuleContext(ExpressionContext.class,0);
 		}
@@ -576,8 +579,12 @@ public class GLSLParser extends Parser {
 				
 			{
 			setState(115); match(31);
-			setState(116); expression(0);
-			writer.store(_localctx.var);
+			setState(116); ((VarDeclarationContext)_localctx).expression = expression(0);
+
+						Assignment assignment = new Assignment(new VariableStore(_localctx.var), ((VarDeclarationContext)_localctx).expression.value);
+						System.out.println(assignment);
+						assignment.visit(visitor);
+					
 			}
 			setState(119); match(33);
 			}
@@ -594,6 +601,7 @@ public class GLSLParser extends Parser {
 	}
 
 	public static class ReturnStatementContext extends ParserRuleContext {
+		public ExpressionContext expression;
 		public ExpressionContext expression() {
 			return getRuleContext(ExpressionContext.class,0);
 		}
@@ -618,9 +626,13 @@ public class GLSLParser extends Parser {
 			enterOuterAlt(_localctx, 1);
 			{
 			setState(121); match(32);
-			setState(122); expression(0);
+			setState(122); ((ReturnStatementContext)_localctx).expression = expression(0);
 			setState(123); match(33);
-			writer.write(Bytecode.RETURN);
+
+					ReturnStatement rtrn = new ReturnStatement(((ReturnStatementContext)_localctx).expression.value);
+					System.out.println(rtrn);
+					rtrn.visit(visitor);
+				
 			}
 		}
 		catch (RecognitionException re) {
@@ -796,44 +808,36 @@ public class GLSLParser extends Parser {
 			setState(153); ((AssignmentContext)_localctx).expression = expression(0);
 			setState(154); match(33);
 
-					Swizzle swizzle = null;
-					Value outValue = var;
-							
-					if (((AssignmentContext)_localctx).SWIZZLE != null) {
-						swizzle = new Swizzle(var.type, (((AssignmentContext)_localctx).SWIZZLE!=null?((AssignmentContext)_localctx).SWIZZLE.getText():null).substring(1));
-						outValue = swizzle.getValue();
+					Swizzle swizzle = (((AssignmentContext)_localctx).SWIZZLE == null ? null : new Swizzle(var.type, (((AssignmentContext)_localctx).SWIZZLE!=null?((AssignmentContext)_localctx).SWIZZLE.getText():null).substring(1)));
+					String op = (((AssignmentContext)_localctx).OP!=null?((AssignmentContext)_localctx).OP.getText():null);
+					Value exprValue = ((AssignmentContext)_localctx).expression.value;
+					VariableStore outVar = (swizzle == null ? new VariableStore(var) : new VariableStore(var, swizzle));
+					
+					if (!op.equals("=")) {
+						VariableLoad varLoad = (swizzle == null ? new VariableLoad(var) : new VariableLoad(var, swizzle));
+						
+						if (op.equals("+="))
+							exprValue = new BinaryOp(varLoad.type, Bytecode.ADD.name(), exprValue, varLoad);
+						else if (op.equals("-="))
+							exprValue = new BinaryOp(varLoad.type, Bytecode.SUB.name(), exprValue, varLoad);
+						else if (op.equals("*="))
+							exprValue = new BinaryOp(varLoad.type, Bytecode.MUL.name(), exprValue, varLoad);
+						else if (op.equals("/="))
+							exprValue = new BinaryOp(varLoad.type, Bytecode.DIV.name(), exprValue, varLoad);
 					}
 					
-					Value exprValue = ((AssignmentContext)_localctx).expression.value;
-					if (exprValue.type.size == 1 && outValue.type.size > 1) {
-						writer.writeWideOp(Bytecode.DUPS, outValue.type.size - 1);
-						exprValue = new Value(new Type(var.type.size, exprValue.type.integer));
+					Assignment assignment = new Assignment(outVar, exprValue);
+					System.out.println(assignment);
+					assignment.visit(visitor);
+									
+					if (exprValue.type.size == 1 && outVar.type.size > 1) {
+						exprValue = new Value(new Type(outVar.type.size, exprValue.type.integer));
 					}
 				
 					if (var != null) {
-						if (!exprValue.isCompatible(outValue)) {
-							log.error(((AssignmentContext)_localctx).ID, "Trying to assign a '" + exprValue + "' value to the variable '" + (((AssignmentContext)_localctx).ID!=null?((AssignmentContext)_localctx).ID.getText():null) + "' of type '" + outValue.type + "'");
+						if (!exprValue.isCompatible(outVar)) {
+							log.error(((AssignmentContext)_localctx).ID, "Trying to assign a '" + exprValue + "' value to the variable '" + (((AssignmentContext)_localctx).ID!=null?((AssignmentContext)_localctx).ID.getText():null) + "' of type '" + outVar.type + "'");
 						}
-						
-						if (!(((AssignmentContext)_localctx).OP!=null?((AssignmentContext)_localctx).OP.getText():null).equals("="))
-						{			
-							writer.load(var);
-							if (swizzle != null) swizzle.writeShift(writer, variables.get("__tempf"));
-						}
-					
-						if ((((AssignmentContext)_localctx).OP!=null?((AssignmentContext)_localctx).OP.getText():null).equals("+="))
-							typeHelper.writeBinaryOp(((AssignmentContext)_localctx).ID, Bytecode.ADD, outValue, exprValue);
-						else if ((((AssignmentContext)_localctx).OP!=null?((AssignmentContext)_localctx).OP.getText():null).equals("-="))
-							typeHelper.writeBinaryOp(((AssignmentContext)_localctx).ID, Bytecode.SUB, outValue, exprValue);
-						else if ((((AssignmentContext)_localctx).OP!=null?((AssignmentContext)_localctx).OP.getText():null).equals("*="))
-							typeHelper.writeBinaryOp(((AssignmentContext)_localctx).ID, Bytecode.MUL, outValue, exprValue);
-						else if ((((AssignmentContext)_localctx).OP!=null?((AssignmentContext)_localctx).OP.getText():null).equals("/="))
-							typeHelper.writeBinaryOp(((AssignmentContext)_localctx).ID, Bytecode.DIV, outValue, exprValue);
-						
-						if (swizzle == null)
-							writer.store(var);
-						else
-							swizzle.writeStore(writer, var);
 					}
 				
 			}
@@ -1050,6 +1054,7 @@ public class GLSLParser extends Parser {
 	public static class FactorContext extends ParserRuleContext {
 		public Value value;
 		public AtomContext atom;
+		public Token OP;
 		public AtomContext atom() {
 			return getRuleContext(AtomContext.class,0);
 		}
@@ -1106,9 +1111,9 @@ public class GLSLParser extends Parser {
 				break;
 			case 7:
 				{
-				setState(198); match(7);
+				setState(198); ((FactorContext)_localctx).OP = match(7);
 				setState(199); ((FactorContext)_localctx).atom = atom();
-				((FactorContext)_localctx).value =  ((FactorContext)_localctx).atom.value; writer.writeWideOp(Bytecode.NEG, _localctx.value);
+				((FactorContext)_localctx).value =  typeHelper.writeUnaryOp(((FactorContext)_localctx).OP, Bytecode.NEG, ((FactorContext)_localctx).atom.value);
 				}
 				break;
 			default:
@@ -1233,8 +1238,7 @@ public class GLSLParser extends Parser {
 					setState(220); ((AtomContext)_localctx).SWIZZLE = match(SWIZZLE);
 
 									Swizzle swizzle = new Swizzle(_localctx.value.type, (((AtomContext)_localctx).SWIZZLE!=null?((AtomContext)_localctx).SWIZZLE.getText():null).substring(1));
-									swizzle.writeShift(writer, variables.get("__tempf"));
-									((AtomContext)_localctx).value =  swizzle.getValue();
+									((AtomContext)_localctx).value =  new SwizzleValue(_localctx.value, swizzle);
 								
 					}
 					break;
@@ -1270,13 +1274,10 @@ public class GLSLParser extends Parser {
 				}
 
 						if (var != null) {			
-							if (swizzle == null) {
-								writer.load(var);
-								((AtomContext)_localctx).value =  new Value(var.type);
-							} else {
-								swizzle.writeLoad(writer, var);
-								((AtomContext)_localctx).value =  swizzle.getValue();
-							}
+							if (swizzle == null)
+								((AtomContext)_localctx).value =  new VariableLoad(var);
+							else
+								((AtomContext)_localctx).value =  new VariableLoad(var, swizzle);
 						} else {
 							((AtomContext)_localctx).value =  new Value(tVoid);
 							log.error(((AtomContext)_localctx).ID, "Variable '" + (((AtomContext)_localctx).ID!=null?((AtomContext)_localctx).ID.getText():null) + "' does not exist");
@@ -1300,6 +1301,8 @@ public class GLSLParser extends Parser {
 	public static class ConstructionContext extends ParserRuleContext {
 		public Value value;
 		public TypeContext type;
+		public ExpressionContext expression;
+		public List<ExpressionContext> args = new ArrayList<ExpressionContext>();
 		public List<ExpressionContext> expression() {
 			return getRuleContexts(ExpressionContext.class);
 		}
@@ -1332,7 +1335,8 @@ public class GLSLParser extends Parser {
 			{
 			setState(236); ((ConstructionContext)_localctx).type = type();
 			setState(237); match(8);
-			setState(238); expression(0);
+			setState(238); ((ConstructionContext)_localctx).expression = expression(0);
+			((ConstructionContext)_localctx).args.add(((ConstructionContext)_localctx).expression);
 			setState(243);
 			_errHandler.sync(this);
 			_la = _input.LA(1);
@@ -1340,7 +1344,8 @@ public class GLSLParser extends Parser {
 				{
 				{
 				setState(239); match(4);
-				setState(240); expression(0);
+				setState(240); ((ConstructionContext)_localctx).expression = expression(0);
+				((ConstructionContext)_localctx).args.add(((ConstructionContext)_localctx).expression);
 				}
 				}
 				setState(245);
@@ -1348,7 +1353,11 @@ public class GLSLParser extends Parser {
 				_la = _input.LA(1);
 			}
 			setState(246); match(25);
-			((ConstructionContext)_localctx).value =  new Value(((ConstructionContext)_localctx).type.t);
+
+					ArrayList<Value> inputs = new ArrayList<Value>();
+					for (ExpressionContext exp : ((ConstructionContext)_localctx).args) inputs.add(exp.value);
+					((ConstructionContext)_localctx).value =  new Construction(((ConstructionContext)_localctx).type.t, inputs);
+				
 			}
 		}
 		catch (RecognitionException re) {
@@ -1364,7 +1373,6 @@ public class GLSLParser extends Parser {
 
 	public static class BuiltInCallContext extends ParserRuleContext {
 		public Value value;
-		public ExpressionContext expression;
 		public Token FUN;
 		public ExpressionContext a;
 		public ExpressionContext b;
@@ -1398,41 +1406,41 @@ public class GLSLParser extends Parser {
 			case 3:
 				enterOuterAlt(_localctx, 1);
 				{
-				setState(249); match(3);
+				setState(249); ((BuiltInCallContext)_localctx).FUN = match(3);
 				setState(250); match(8);
-				setState(251); ((BuiltInCallContext)_localctx).expression = expression(0);
+				setState(251); ((BuiltInCallContext)_localctx).a = expression(0);
 				setState(252); match(25);
-				((BuiltInCallContext)_localctx).value =  ((BuiltInCallContext)_localctx).expression.value; writer.writeWideOp(Bytecode.SIN, _localctx.value);
+				((BuiltInCallContext)_localctx).value =  typeHelper.writeUnaryOp(((BuiltInCallContext)_localctx).FUN, Bytecode.SIN, ((BuiltInCallContext)_localctx).a.value);
 				}
 				break;
 			case 34:
 				enterOuterAlt(_localctx, 2);
 				{
-				setState(255); match(34);
+				setState(255); ((BuiltInCallContext)_localctx).FUN = match(34);
 				setState(256); match(8);
-				setState(257); ((BuiltInCallContext)_localctx).expression = expression(0);
+				setState(257); ((BuiltInCallContext)_localctx).a = expression(0);
 				setState(258); match(25);
-				((BuiltInCallContext)_localctx).value =  ((BuiltInCallContext)_localctx).expression.value; writer.writeWideOp(Bytecode.COS, _localctx.value);
+				((BuiltInCallContext)_localctx).value =  typeHelper.writeUnaryOp(((BuiltInCallContext)_localctx).FUN, Bytecode.COS, ((BuiltInCallContext)_localctx).a.value);
 				}
 				break;
 			case 11:
 				enterOuterAlt(_localctx, 3);
 				{
-				setState(261); match(11);
+				setState(261); ((BuiltInCallContext)_localctx).FUN = match(11);
 				setState(262); match(8);
-				setState(263); ((BuiltInCallContext)_localctx).expression = expression(0);
+				setState(263); ((BuiltInCallContext)_localctx).a = expression(0);
 				setState(264); match(25);
-				((BuiltInCallContext)_localctx).value =  ((BuiltInCallContext)_localctx).expression.value; writer.writeWideOp(Bytecode.SQRT, _localctx.value);
+				((BuiltInCallContext)_localctx).value =  typeHelper.writeUnaryOp(((BuiltInCallContext)_localctx).FUN, Bytecode.SQRT, ((BuiltInCallContext)_localctx).a.value);
 				}
 				break;
 			case 14:
 				enterOuterAlt(_localctx, 4);
 				{
-				setState(267); match(14);
+				setState(267); ((BuiltInCallContext)_localctx).FUN = match(14);
 				setState(268); match(8);
-				setState(269); ((BuiltInCallContext)_localctx).expression = expression(0);
+				setState(269); ((BuiltInCallContext)_localctx).a = expression(0);
 				setState(270); match(25);
-				((BuiltInCallContext)_localctx).value =  ((BuiltInCallContext)_localctx).expression.value; writer.writeWideOp(Bytecode.ABS, _localctx.value);
+				((BuiltInCallContext)_localctx).value =  typeHelper.writeUnaryOp(((BuiltInCallContext)_localctx).FUN, Bytecode.ABS, ((BuiltInCallContext)_localctx).a.value);
 				}
 				break;
 			case 38:
@@ -1530,36 +1538,33 @@ public class GLSLParser extends Parser {
 			case 22:
 				enterOuterAlt(_localctx, 12);
 				{
-				setState(333); match(22);
+				setState(333); ((BuiltInCallContext)_localctx).FUN = match(22);
 				setState(334); match(8);
-				setState(335); ((BuiltInCallContext)_localctx).expression = expression(0);
+				setState(335); ((BuiltInCallContext)_localctx).a = expression(0);
 				setState(336); match(25);
-
-						((BuiltInCallContext)_localctx).value =  new Value(tFloat, ((BuiltInCallContext)_localctx).expression.value.constant);
-						if (((BuiltInCallContext)_localctx).expression.value.type.size > 1) writer.writeWideOp(Bytecode.LEN, ((BuiltInCallContext)_localctx).expression.value);
-					
+				((BuiltInCallContext)_localctx).value =  typeHelper.writeUnaryOp(((BuiltInCallContext)_localctx).FUN, Bytecode.LEN, ((BuiltInCallContext)_localctx).a.value);
 				}
 				break;
 			case 30:
 				enterOuterAlt(_localctx, 13);
 				{
-				setState(339); match(30);
+				setState(339); ((BuiltInCallContext)_localctx).FUN = match(30);
 				setState(340); match(8);
-				setState(341); ((BuiltInCallContext)_localctx).expression = expression(0);
+				setState(341); ((BuiltInCallContext)_localctx).a = expression(0);
 				setState(342); match(25);
-				((BuiltInCallContext)_localctx).value =  ((BuiltInCallContext)_localctx).expression.value; writer.writeWideOp(Bytecode.NORM, _localctx.value);
+				((BuiltInCallContext)_localctx).value =  typeHelper.writeUnaryOp(((BuiltInCallContext)_localctx).FUN, Bytecode.NORM, ((BuiltInCallContext)_localctx).a.value);
 				}
 				break;
 			case 15:
 				enterOuterAlt(_localctx, 14);
 				{
-				setState(345); match(15);
+				setState(345); ((BuiltInCallContext)_localctx).FUN = match(15);
 				setState(346); match(8);
-				setState(347); ((BuiltInCallContext)_localctx).a = ((BuiltInCallContext)_localctx).expression = expression(0);
+				setState(347); ((BuiltInCallContext)_localctx).a = expression(0);
 				setState(348); match(4);
-				setState(349); ((BuiltInCallContext)_localctx).b = ((BuiltInCallContext)_localctx).expression = expression(0);
+				setState(349); ((BuiltInCallContext)_localctx).b = expression(0);
 				setState(350); match(25);
-				((BuiltInCallContext)_localctx).value =  ((BuiltInCallContext)_localctx).expression.value; writer.writeWideOp(Bytecode.DP, _localctx.value);
+				((BuiltInCallContext)_localctx).value =  typeHelper.writeUnaryOp(((BuiltInCallContext)_localctx).FUN, Bytecode.DP, ((BuiltInCallContext)_localctx).a.value);
 				}
 				break;
 			default:
@@ -1580,6 +1585,8 @@ public class GLSLParser extends Parser {
 	public static class FunctionCallContext extends ParserRuleContext {
 		public Value value;
 		public Token ID;
+		public ExpressionContext expression;
+		public List<ExpressionContext> args = new ArrayList<ExpressionContext>();
 		public List<ExpressionContext> expression() {
 			return getRuleContexts(ExpressionContext.class);
 		}
@@ -1620,7 +1627,8 @@ public class GLSLParser extends Parser {
 			_la = _input.LA(1);
 			if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << 2) | (1L << 3) | (1L << 5) | (1L << 7) | (1L << 8) | (1L << 10) | (1L << 11) | (1L << 12) | (1L << 14) | (1L << 15) | (1L << 18) | (1L << 20) | (1L << 21) | (1L << 22) | (1L << 24) | (1L << 26) | (1L << 27) | (1L << 30) | (1L << 34) | (1L << 35) | (1L << 38) | (1L << 41) | (1L << INTEGER) | (1L << FLOAT) | (1L << ID))) != 0)) {
 				{
-				setState(358); expression(0);
+				setState(358); ((FunctionCallContext)_localctx).expression = expression(0);
+				((FunctionCallContext)_localctx).args.add(((FunctionCallContext)_localctx).expression);
 				}
 			}
 
@@ -1631,7 +1639,8 @@ public class GLSLParser extends Parser {
 				{
 				{
 				setState(361); match(4);
-				setState(362); expression(0);
+				setState(362); ((FunctionCallContext)_localctx).expression = expression(0);
+				((FunctionCallContext)_localctx).args.add(((FunctionCallContext)_localctx).expression);
 				}
 				}
 				setState(367);
@@ -1640,8 +1649,9 @@ public class GLSLParser extends Parser {
 			}
 			setState(368); match(25);
 
-					((FunctionCallContext)_localctx).value =  new Value(func.returnType);
-					writer.write(Bytecode.CALL, (((FunctionCallContext)_localctx).ID!=null?((FunctionCallContext)_localctx).ID.getText():null));
+					ArrayList<Value> inputs = new ArrayList<Value>();
+					for (ExpressionContext exp : ((FunctionCallContext)_localctx).args) inputs.add(exp.value);
+					((FunctionCallContext)_localctx).value =  new FunctionCall(func, inputs);
 				
 			}
 		}
@@ -1686,14 +1696,14 @@ public class GLSLParser extends Parser {
 				enterOuterAlt(_localctx, 1);
 				{
 				setState(371); ((LiteralContext)_localctx).INTEGER = match(INTEGER);
-				writer.write(Bytecode.LDC, Integer.parseInt((((LiteralContext)_localctx).INTEGER!=null?((LiteralContext)_localctx).INTEGER.getText():null))); ((LiteralContext)_localctx).value =  new Value(tInt, true);
+				((LiteralContext)_localctx).value =  new Value(tInt, Integer.parseInt((((LiteralContext)_localctx).INTEGER!=null?((LiteralContext)_localctx).INTEGER.getText():null)));
 				}
 				break;
 			case FLOAT:
 				enterOuterAlt(_localctx, 2);
 				{
 				setState(373); ((LiteralContext)_localctx).FLOAT = match(FLOAT);
-				writer.write(Bytecode.LDC, Float.parseFloat((((LiteralContext)_localctx).FLOAT!=null?((LiteralContext)_localctx).FLOAT.getText():null))); ((LiteralContext)_localctx).value =  new Value(tFloat, true);
+				((LiteralContext)_localctx).value =  new Value(tFloat, Float.parseFloat((((LiteralContext)_localctx).FLOAT!=null?((LiteralContext)_localctx).FLOAT.getText():null)));
 				}
 				break;
 			default:

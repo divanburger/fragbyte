@@ -3,6 +3,9 @@ package whitesquare.glslcross.glslcompiler;
 import java.util.HashMap;
 import java.util.Map;
 
+import whitesquare.glslcross.ast.Type;
+import whitesquare.glslcross.ast.Variable;
+
 public class Variables {
 	public int top = 0;
 	Map<String, Variable> variables = new HashMap<String, Variable>();

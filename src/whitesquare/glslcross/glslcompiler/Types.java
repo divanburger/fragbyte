@@ -3,6 +3,8 @@ package whitesquare.glslcross.glslcompiler;
 import java.util.HashMap;
 import java.util.Map;
 
+import whitesquare.glslcross.ast.Type;
+
 public class Types {
 	Map<String, Type> types = new HashMap<String, Type>();
 	

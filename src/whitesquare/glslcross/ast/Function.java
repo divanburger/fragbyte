@@ -1,4 +1,4 @@
-package whitesquare.glslcross.glslcompiler;
+package whitesquare.glslcross.ast;
 
 public class Function {
 	public String name;

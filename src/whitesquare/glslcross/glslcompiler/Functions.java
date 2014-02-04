@@ -3,6 +3,9 @@ package whitesquare.glslcross.glslcompiler;
 import java.util.HashMap;
 import java.util.Map;
 
+import whitesquare.glslcross.ast.Function;
+import whitesquare.glslcross.ast.Type;
+
 public class Functions {
 	Map<String, Function> functions = new HashMap<String, Function>();
 	

@@ -18,7 +18,7 @@ import whitesquare.glslcross.glslcompiler.GLSLLexer;
 import whitesquare.glslcross.glslcompiler.GLSLParser;
 
 public class GLSLCompiler {
-	public String prefix = "tests/test2"; 
+	public String prefix = "tests/test5"; 
 	
 	public GLSLCompiler() {
 		parse(prefix + ".glsl");
@@ -35,7 +35,7 @@ public class GLSLCompiler {
 		
 		System.out.println("Before optimization: " + program.instructions.size() + " instr - " + program.maxSlots + " slots");
 		
-		for (int i = 0; i < 0; i++) {
+		for (int i = 0; i < 4; i++) {
 			boolean changes = false;
 			for (Optimizer optimizer : optimizers)
 				changes |= optimizer.optimize(program);
@@ -58,9 +58,9 @@ public class GLSLCompiler {
 			parser.glsl();
 			
 			Program program = bytecodeWriter.getProgram();
-			program.writeOut(prefix + "_pre.byte");
+			//program.writeOut(prefix + "_pre.byte");
 			
-			StackAnalyzer stackAnalyzer = new StackAnalyzer(true);
+			StackAnalyzer stackAnalyzer = new StackAnalyzer(false);
 			if (!stackAnalyzer.analyze(program)) {
 				System.out.println("Resulting program is invalid!!! (Before optimization)");
 				return;

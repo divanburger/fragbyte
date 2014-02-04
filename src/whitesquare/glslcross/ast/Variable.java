@@ -1,4 +1,4 @@
-package whitesquare.glslcross.glslcompiler;
+package whitesquare.glslcross.ast;
 
 public class Variable extends Value {
 	public int slot;
@@ -10,6 +10,11 @@ public class Variable extends Value {
 	
 	public Variable(int slot, Type type) {
 		this(slot, type, false);
+	}
+
+	@Override
+	public void visit(ASTVisitor visitor) {
+		visitor.visitVariable(this);
 	}
 	
 	@Override

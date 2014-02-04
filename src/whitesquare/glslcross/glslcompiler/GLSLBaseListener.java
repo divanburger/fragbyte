@@ -4,6 +4,7 @@ package whitesquare.glslcross.glslcompiler;
 import java.util.Stack;
 
 import whitesquare.glslcross.bytecode.Bytecode;
+import whitesquare.glslcross.ast.*;
 
 
 import org.antlr.v4.runtime.ParserRuleContext;
