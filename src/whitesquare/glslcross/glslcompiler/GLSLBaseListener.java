@@ -3,8 +3,8 @@ package whitesquare.glslcross.glslcompiler;
 
 import java.util.Stack;
 
-import whitesquare.glslcross.bytecode.Bytecode;
 import whitesquare.glslcross.ast.*;
+import whitesquare.glslcross.ast.optimizers.*;
 
 
 import org.antlr.v4.runtime.ParserRuleContext;

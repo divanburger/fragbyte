@@ -6,11 +6,16 @@ import java.util.ArrayList;
 import org.antlr.v4.runtime.ANTLRFileStream;
 import org.antlr.v4.runtime.CommonTokenStream;
 
+import whitesquare.glslcross.ast.Node;
+import whitesquare.glslcross.ast.Unit;
+import whitesquare.glslcross.ast.Variable;
+import whitesquare.glslcross.ast.optimizers.ASTOptimizer;
+import whitesquare.glslcross.ast.optimizers.OrderOptimizer;
 import whitesquare.glslcross.bytecode.Program;
 import whitesquare.glslcross.bytecode.analyzer.StackAnalyzer;
 import whitesquare.glslcross.bytecode.optimizers.BlockOptimizer;
 import whitesquare.glslcross.bytecode.optimizers.CombinerOptimizer;
-import whitesquare.glslcross.bytecode.optimizers.Optimizer;
+import whitesquare.glslcross.bytecode.optimizers.BytecodeOptimizer;
 import whitesquare.glslcross.bytecode.optimizers.StackOptimizer;
 import whitesquare.glslcross.bytecode.optimizers.StoreLoadOptimizer;
 import whitesquare.glslcross.bytecode.optimizers.UnusedSlotOptimizer;
@@ -18,27 +23,40 @@ import whitesquare.glslcross.glslcompiler.GLSLLexer;
 import whitesquare.glslcross.glslcompiler.GLSLParser;
 
 public class GLSLCompiler {
-	public String prefix = "tests/test5"; 
+	public String prefix = "tests/test2"; 
 	
 	public GLSLCompiler() {
 		parse(prefix + ".glsl");
 	}
 	
+	public void optimizeAST(Node ast) {
+		ASTOptimizer orderOptimizer = new OrderOptimizer();
+		orderOptimizer.optimize(ast);
+	}
+	
 	public void optimize(Program program) {
-		ArrayList<Optimizer> optimizers = new ArrayList<Optimizer>();
+		ArrayList<BytecodeOptimizer> bytecodeOptimizers = new ArrayList<BytecodeOptimizer>();
 		
-		optimizers.add(new StoreLoadOptimizer());
-		optimizers.add(new UnusedSlotOptimizer());
-		optimizers.add(new StackOptimizer());
-		optimizers.add(new CombinerOptimizer());
-		optimizers.add(new BlockOptimizer());
+		bytecodeOptimizers.add(new StoreLoadOptimizer());
+		bytecodeOptimizers.add(new UnusedSlotOptimizer());
+		//bytecodeOptimizers.add(new StackOptimizer());
+		bytecodeOptimizers.add(new CombinerOptimizer());
+		bytecodeOptimizers.add(new BlockOptimizer());
 		
 		System.out.println("Before optimization: " + program.instructions.size() + " instr - " + program.maxSlots + " slots");
 		
-		for (int i = 0; i < 4; i++) {
+		phaseLoop: for (int i = 0; i < 32; i++) {
 			boolean changes = false;
-			for (Optimizer optimizer : optimizers)
-				changes |= optimizer.optimize(program);
+			for (BytecodeOptimizer bytecodeOptimizer : bytecodeOptimizers) {
+				changes |= bytecodeOptimizer.optimize(program);
+			
+				StackAnalyzer stackAnalyzer = new StackAnalyzer(false);
+				if (!stackAnalyzer.analyze(program)) {
+					System.out.println("Resulting program is invalid!!! (Phase " + i + " : " + BytecodeOptimizer.class.getName() + ")");
+					break phaseLoop;
+				}
+			}
+			
 			System.out.println("After phase " + i + ": " + program.instructions.size() + " instr - " + program.maxSlots + " slots");
 			if (!changes) break;
 		}
@@ -47,20 +65,31 @@ public class GLSLCompiler {
 	public void parse(String filename) {
 		System.out.println("Compiling: " + filename);
 		
+		LogWriter log = new LogWriter();
+		
 		try {
 			ANTLRFileStream stream = new ANTLRFileStream(filename);
 			GLSLLexer lexer = new GLSLLexer(stream);
 			GLSLParser parser = new GLSLParser(new CommonTokenStream(lexer));
 			
-			BytecodeWriter bytecodeWriter = new BytecodeWriter();
-			
-			parser.setBytecodeWriter(bytecodeWriter);
 			parser.glsl();
+			Unit unit = parser.getUnit();
+						
+			Variables variables = parser.getVariables();
+			Variable tempVar = variables.add("__tempf", unit.getType("vec4"), false);
+			
+			optimizeAST(unit);
+			
+			BytecodeWriter bytecodeWriter = new BytecodeWriter();
+			BytecodeVisitor visitor = new BytecodeVisitor(bytecodeWriter, log, tempVar);
+			unit.visit(visitor);
+			
+			bytecodeWriter.getProgram().setMaxSlots(variables.size());
 			
 			Program program = bytecodeWriter.getProgram();
-			//program.writeOut(prefix + "_pre.byte");
+			program.writeOut(prefix + "_pre.byte");
 			
-			StackAnalyzer stackAnalyzer = new StackAnalyzer(false);
+			StackAnalyzer stackAnalyzer = new StackAnalyzer(true);
 			if (!stackAnalyzer.analyze(program)) {
 				System.out.println("Resulting program is invalid!!! (Before optimization)");
 				return;

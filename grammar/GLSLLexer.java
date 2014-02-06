@@ -3,8 +3,8 @@ package whitesquare.glslcross.glslcompiler;
 
 import java.util.Stack;
 
-import whitesquare.glslcross.bytecode.Bytecode;
 import whitesquare.glslcross.ast.*;
+import whitesquare.glslcross.ast.optimizers.*;
 
 import org.antlr.v4.runtime.Lexer;
 import org.antlr.v4.runtime.CharStream;
@@ -52,22 +52,29 @@ public class GLSLLexer extends Lexer {
 	};
 
 
-	private BytecodeWriter writer;
 	private Functions functions = new Functions();
 	private Variables variables = new Variables();
-	private Types types = new Types();
-	private LogWriter log = new LogWriter();
+	private LogWriter log = null;
 	private TypeHelper typeHelper = new TypeHelper(log);
-	private BytecodeVisitor visitor = null;
+	private ScopeManager scope = new ScopeManager();
 	private Type tInt;
 	private Type tFloat;
 	private Type tVec2;
 	private Type tVec3;
 	private Type tVec4;
 	private Type tVoid;
+	private Unit unit = new Unit();
 
-	public void setBytecodeWriter(BytecodeWriter writer) {
-		this.writer = writer;
+	public void setLog(LogWriter log) {
+		this.log = log;
+	}
+
+	public Unit getUnit() {
+		return unit;
+	}
+
+	public Variables getVariables() {
+		return variables;
 	}
 
 

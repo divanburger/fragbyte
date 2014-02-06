@@ -7,7 +7,7 @@ import whitesquare.glslcross.bytecode.Bytecode;
 import whitesquare.glslcross.bytecode.Instruction;
 import whitesquare.glslcross.bytecode.Program;
 
-public class BytecodeWriter {
+class BytecodeWriter {
 	private Program program;
 		
 	public BytecodeWriter() {
@@ -66,11 +66,12 @@ public class BytecodeWriter {
 		if (isLinear) {
 			for (int i = swizzle.size; i < swizzle.inType.size; i++)
 				write(Bytecode.POP);
-		} else
+		} else {
 			store(tempVar, 0, swizzle.inType.size);
 			
 			for (int i = 0; i < swizzle.size; i++)
 				load(tempVar, swizzle.indices[i], 1);
+		}
 	}
 		
 	public void store(Variable var) {
@@ -78,6 +79,8 @@ public class BytecodeWriter {
 	}	
 	
 	public void store(Variable var, int offset, int size) {
+		if (var == null) throw new Error("Trying to write a store with a null variable");
+		if (size < 1 || size > 4) throw new Error("Trying to write a store with a size of " + size);
 		String str = "STORE" + (size>1?size:"");
 		program.add(new Instruction(Bytecode.valueOf(str), var.slot+offset));
 	}
@@ -92,7 +95,7 @@ public class BytecodeWriter {
 		if (isLinear)
 			store(var, 0, swizzle.size);
 		else
-			for (int i = 0; i < swizzle.size; i++)
+			for (int i = swizzle.size-1; i >= 0 ; i--)
 				store(var, swizzle.indices[i], 1);
 	}
 	
@@ -101,6 +104,8 @@ public class BytecodeWriter {
 	}
 	
 	public void load(Variable var, int offset, int size) {
+		if (var == null) throw new Error("Trying to write a load with a null variable");
+		if (size < 1 || size > 4) throw new Error("Trying to write a load with a size of " + size);
 		String str = "LOAD" + (size>1?size:"");
 		program.add(new Instruction(Bytecode.valueOf(str), var.slot+offset));
 	}

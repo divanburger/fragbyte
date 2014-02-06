@@ -15,8 +15,9 @@ public class BinaryOp extends Value {
 	@Override
 	public void visit(ASTVisitor visitor) {
 		left.visit(visitor);
+		visitor.visitBinaryOpMid(this);
 		right.visit(visitor);
-		visitor.visitBinaryOp(this);
+		visitor.visitBinaryOpEnd(this);
 	}
 	
 	@Override

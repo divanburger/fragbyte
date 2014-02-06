@@ -1,43 +1,68 @@
 package whitesquare.glslcross.glslcompiler;
 
+import java.util.Stack;
+
 import whitesquare.glslcross.ast.ASTVisitor;
 import whitesquare.glslcross.ast.Assignment;
 import whitesquare.glslcross.ast.BinaryOp;
+import whitesquare.glslcross.ast.Block;
 import whitesquare.glslcross.ast.Construction;
+import whitesquare.glslcross.ast.Function;
 import whitesquare.glslcross.ast.FunctionCall;
+import whitesquare.glslcross.ast.Loop;
+import whitesquare.glslcross.ast.Parameter;
 import whitesquare.glslcross.ast.ReturnStatement;
 import whitesquare.glslcross.ast.SwizzleValue;
 import whitesquare.glslcross.ast.TernaryOp;
 import whitesquare.glslcross.ast.Type;
 import whitesquare.glslcross.ast.UnaryOp;
+import whitesquare.glslcross.ast.Unit;
 import whitesquare.glslcross.ast.Value;
 import whitesquare.glslcross.ast.Variable;
 import whitesquare.glslcross.ast.VariableLoad;
 import whitesquare.glslcross.ast.VariableStore;
 import whitesquare.glslcross.bytecode.Bytecode;
 
-public class BytecodeVisitor extends ASTVisitor {
+public class BytecodeVisitor implements ASTVisitor {
 	private LogWriter log;
 	private BytecodeWriter writer;
 	private Variable tempVar;
 	
+	private Stack<Parameter> parameters = new Stack<>();
+	
 	public BytecodeVisitor(BytecodeWriter writer, LogWriter log, Variable tempVar) {
 		this.writer = writer;
 		this.log = log;
+		this.tempVar = tempVar;
 	}
-	
+
 	@Override
 	public void visitAssignment(Assignment assignment) {
 		if (assignment.value.type.size == 1 && assignment.dest.type.size > 1) {
 			writer.writeWideOp(Bytecode.DUPS, assignment.dest.type.size - 1);
 		}
 	}
+	
+	@Override
+	public void visitBinaryOpMid(BinaryOp op) {
+		Type a = op.left.type, b = op.right.type;
+		if (a.size != b.size && a.size == 1) writer.writeWideOp(Bytecode.DUPS, b.size - a.size);
+	}	
 
 	@Override
-	public void visitBinaryOp(BinaryOp op) {
+	public void visitBinaryOpEnd(BinaryOp op) {
 		Type a = op.left.type, b = op.right.type;
 		if (a.size != b.size && b.size == 1) writer.writeWideOp(Bytecode.DUPS, a.size - b.size);
-		writer.writeWideOp(Bytecode.valueOf(op.op), op.type.size);
+		int size = Math.max(a.size, b.size);
+		writer.writeWideOp(Bytecode.valueOf(op.op), size);
+	}
+
+	@Override
+	public void visitBlockStart(Block block) {		
+	}
+
+	@Override
+	public void visitBlockEnd(Block block) {		
 	}
 
 	@Override
@@ -48,7 +73,40 @@ public class BytecodeVisitor extends ASTVisitor {
 	public void visitFunctionCall(FunctionCall call) {
 		writer.write(Bytecode.CALL, call.function.name);
 	}
+	
+	@Override
+	public void visitFunctionBegin(Function func) {
+		writer.write(Bytecode.FUNC, func.name, func.inputSize, func.outputSize);
+	}
 
+	@Override
+	public void visitFunctionMid(Function func) {
+		while (!parameters.isEmpty()) {
+			Parameter parm = parameters.pop();
+			writer.store(parm.variable);
+		}
+	}
+	
+	@Override
+	public void visitFunctionEnd(Function func) {
+		writer.write(Bytecode.RETURN);
+	}
+	
+	@Override
+	public void visitLoopBegin(Loop loop) {
+		writer.write(Bytecode.REPEAT, loop.iterations);
+	}
+	
+	@Override
+	public void visitLoopEnd(Loop loop) {
+		writer.write(Bytecode.ENDREPEAT);
+	}
+
+	@Override
+	public void visitParameter(Parameter parameter) {
+		parameters.push(parameter);
+	}
+	
 	@Override
 	public void visitReturnStatement(ReturnStatement rtrn) {
 		writer.write(Bytecode.RETURN);
@@ -68,7 +126,20 @@ public class BytecodeVisitor extends ASTVisitor {
 
 	@Override
 	public void visitUnaryOp(UnaryOp op) {
-		writer.writeWideOp(Bytecode.valueOf(op.op), op.type.size);
+		writer.writeWideOp(Bytecode.valueOf(op.op), op.input.type.size);
+	}
+
+	@Override
+	public void visitUnitStart(Unit unit) {
+		for (Variable input : unit.inputs)
+			writer.input(input.name, input);
+		
+		for (Variable output : unit.outputs)
+			writer.output(output.name, output);
+	}
+
+	@Override
+	public void visitUnitEnd(Unit unit) {		
 	}
 
 	@Override

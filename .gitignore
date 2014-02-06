@@ -1,2 +1,7 @@
 bin
 build
+
+cpprenderer/main
+
+tests/*_orig.byte
+tests/*_pre.byte

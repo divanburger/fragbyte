@@ -31,13 +31,15 @@ class BasicPattern {
 	boolean match(Instruction last, Instruction cur) {return (first == last.bytecode) && (second == cur.bytecode);}
 }
 
-public class CombinerOptimizer implements Optimizer {	
+public class CombinerOptimizer implements BytecodeOptimizer {	
 	ArrayList<BasicPattern>	patterns = new ArrayList<BasicPattern>();
 	
 	public CombinerOptimizer() {
 		patterns.add(new BasicPattern(Bytecode.RETURN, Bytecode.RETURN, BasicPattern.Type.REMOVE_SECOND));
 		
 		patterns.add(new BasicPattern(Bytecode.LOAD, Bytecode.POP, BasicPattern.Type.REMOVE_BOTH));
+		patterns.add(new BasicPattern(Bytecode.LOAD, Bytecode.POP2, Bytecode.POP));
+		patterns.add(new BasicPattern(Bytecode.LOAD, Bytecode.POP3, Bytecode.POP2));
 		patterns.add(new BasicPattern(Bytecode.LOAD2, Bytecode.POP2, BasicPattern.Type.REMOVE_BOTH));
 		patterns.add(new BasicPattern(Bytecode.LOAD3, Bytecode.POP3, BasicPattern.Type.REMOVE_BOTH));
 		patterns.add(new BasicPattern(Bytecode.LOAD4, Bytecode.POP4, BasicPattern.Type.REMOVE_BOTH));
@@ -49,6 +51,9 @@ public class CombinerOptimizer implements Optimizer {
 		patterns.add(new BasicPattern(Bytecode.LOAD4, Bytecode.POP3, Bytecode.LOAD));
 
 		patterns.add(new BasicPattern(Bytecode.LDC, Bytecode.POP, BasicPattern.Type.REMOVE_BOTH));
+		patterns.add(new BasicPattern(Bytecode.LDC, Bytecode.POP2, Bytecode.POP));
+		patterns.add(new BasicPattern(Bytecode.LDC, Bytecode.POP3, Bytecode.POP2));
+		patterns.add(new BasicPattern(Bytecode.LDC, Bytecode.POP4, Bytecode.POP3));
 		patterns.add(new BasicPattern(Bytecode.LDC2, Bytecode.POP2, BasicPattern.Type.REMOVE_BOTH));
 		patterns.add(new BasicPattern(Bytecode.LDC3, Bytecode.POP3, BasicPattern.Type.REMOVE_BOTH));
 		patterns.add(new BasicPattern(Bytecode.LDC4, Bytecode.POP4, BasicPattern.Type.REMOVE_BOTH));
@@ -77,12 +82,26 @@ public class CombinerOptimizer implements Optimizer {
 		patterns.add(new BasicPattern(Bytecode.DUPS3, Bytecode.POP2, Bytecode.DUPS));
 
 		patterns.add(new BasicPattern(Bytecode.ADD, Bytecode.POP, Bytecode.POP2));
+		patterns.add(new BasicPattern(Bytecode.ADD, Bytecode.POP2, Bytecode.POP3));
 		patterns.add(new BasicPattern(Bytecode.SUB, Bytecode.POP, Bytecode.POP2));
+		patterns.add(new BasicPattern(Bytecode.SUB, Bytecode.POP2, Bytecode.POP3));
 		patterns.add(new BasicPattern(Bytecode.MUL, Bytecode.POP, Bytecode.POP2));
+		patterns.add(new BasicPattern(Bytecode.MUL, Bytecode.POP2, Bytecode.POP3));
 		patterns.add(new BasicPattern(Bytecode.DIV, Bytecode.POP, Bytecode.POP2));
+		patterns.add(new BasicPattern(Bytecode.DIV, Bytecode.POP2, Bytecode.POP3));
+		patterns.add(new BasicPattern(Bytecode.MAD, Bytecode.POP, Bytecode.POP3));
+		patterns.add(new BasicPattern(Bytecode.MAD, Bytecode.POP2, Bytecode.POP4));
 		patterns.add(new BasicPattern(Bytecode.MOD, Bytecode.POP, Bytecode.POP2));
+		patterns.add(new BasicPattern(Bytecode.MOD, Bytecode.POP2, Bytecode.POP3));
 		patterns.add(new BasicPattern(Bytecode.ATAN, Bytecode.POP, Bytecode.POP2));
+		patterns.add(new BasicPattern(Bytecode.ATAN, Bytecode.POP2, Bytecode.POP3));
 		patterns.add(new BasicPattern(Bytecode.STEP, Bytecode.POP, Bytecode.POP2));
+		patterns.add(new BasicPattern(Bytecode.STEP, Bytecode.POP2, Bytecode.POP3));
+		
+		patterns.add(new BasicPattern(Bytecode.COS, Bytecode.POP, BasicPattern.Type.REMOVE_BOTH));
+		patterns.add(new BasicPattern(Bytecode.COS, Bytecode.POP2, Bytecode.POP2));
+		patterns.add(new BasicPattern(Bytecode.SIN, Bytecode.POP, BasicPattern.Type.REMOVE_BOTH));
+		patterns.add(new BasicPattern(Bytecode.SIN, Bytecode.POP2, Bytecode.POP2));
 	}
 	
 	@Override
@@ -112,6 +131,7 @@ public class CombinerOptimizer implements Optimizer {
 							break;
 						case REPLACE:
 							last.bytecode = pattern.replace;
+							if (last.bytecode.ops == 0) last.type = Instruction.Type.NONE;
 							instrs.remove(i);
 							break;
 					}
@@ -175,17 +195,17 @@ public class CombinerOptimizer implements Optimizer {
 			}
 			
 			else if (last.bytecode == Bytecode.LOAD && cur.bytecode == Bytecode.LOAD && last.valueInt == cur.valueInt) {
-				cur.bytecode = Bytecode.DUPS;
+				cur.bytecode = Bytecode.DUP;
 				cur.type = Instruction.Type.NONE;
 				continue;
 			}
 			else if (last.bytecode == Bytecode.LOAD2 && cur.bytecode == Bytecode.LOAD2 && last.valueInt == cur.valueInt) {
-				cur.bytecode = Bytecode.DUPS2;
+				cur.bytecode = Bytecode.DUP2;
 				cur.type = Instruction.Type.NONE;
 				continue;
 			}
 			else if (last.bytecode == Bytecode.LOAD3 && cur.bytecode == Bytecode.LOAD3 && last.valueInt == cur.valueInt) {
-				cur.bytecode = Bytecode.DUPS3;
+				cur.bytecode = Bytecode.DUP3;
 				cur.type = Instruction.Type.NONE;
 				continue;
 			}

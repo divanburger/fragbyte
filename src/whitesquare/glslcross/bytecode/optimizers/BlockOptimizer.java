@@ -8,7 +8,7 @@ import whitesquare.glslcross.bytecode.Bytecode;
 import whitesquare.glslcross.bytecode.Instruction;
 import whitesquare.glslcross.bytecode.Program;
 
-public class BlockOptimizer implements Optimizer {
+public class BlockOptimizer implements BytecodeOptimizer {
 	class Block {
 		ArrayList<Instruction>	instructions = new ArrayList<Instruction>();
 		

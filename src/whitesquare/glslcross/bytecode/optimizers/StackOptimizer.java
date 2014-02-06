@@ -8,7 +8,7 @@ import whitesquare.glslcross.bytecode.Bytecode;
 import whitesquare.glslcross.bytecode.Instruction;
 import whitesquare.glslcross.bytecode.Program;
 
-public class StackOptimizer implements Optimizer {
+public class StackOptimizer implements BytecodeOptimizer {
 
 	private int[] stackInstr = new int[32];
 	private int[] stackPos = new int[32];

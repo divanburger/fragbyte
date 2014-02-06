@@ -6,15 +6,15 @@ import java.util.Map;
 import whitesquare.glslcross.ast.Function;
 import whitesquare.glslcross.ast.Type;
 
-public class Functions {
+class Functions {
 	Map<String, Function> functions = new HashMap<String, Function>();
 	
 	public Functions() {
 		
 	}
 	
-	Function add(String name, Type returnType) {
-		Function var = new Function(name, returnType);
+	Function add(String name, Type returnType, int inputSize) {
+		Function var = new Function(name, returnType, inputSize);
 		functions.put(name, var);
 		return var;
 	}

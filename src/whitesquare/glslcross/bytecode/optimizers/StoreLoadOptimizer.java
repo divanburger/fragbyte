@@ -7,7 +7,7 @@ import whitesquare.glslcross.bytecode.Instruction;
 import whitesquare.glslcross.bytecode.Program;
 import whitesquare.glslcross.bytecode.ProgramParameter;
 
-public class StoreLoadOptimizer implements Optimizer {
+public class StoreLoadOptimizer implements BytecodeOptimizer {
 
 	@Override
 	public boolean optimize(Program program) {

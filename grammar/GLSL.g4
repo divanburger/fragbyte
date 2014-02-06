@@ -3,53 +3,58 @@ grammar GLSL;
 @header {
 import java.util.Stack;
 
-import whitesquare.glslcross.bytecode.Bytecode;
 import whitesquare.glslcross.ast.*;
+import whitesquare.glslcross.ast.optimizers.*;
 }
 
 @members {
-private BytecodeWriter writer;
 private Functions functions = new Functions();
 private Variables variables = new Variables();
-private Types types = new Types();
-private LogWriter log = new LogWriter();
+private LogWriter log = null;
 private TypeHelper typeHelper = new TypeHelper(log);
-private BytecodeVisitor visitor = null;
+private ScopeManager scope = new ScopeManager();
 private Type tInt;
 private Type tFloat;
 private Type tVec2;
 private Type tVec3;
 private Type tVec4;
 private Type tVoid;
+private Unit unit = new Unit();
 
-public void setBytecodeWriter(BytecodeWriter writer) {
-	this.writer = writer;
+public void setLog(LogWriter log) {
+	this.log = log;
+}
+
+public Unit getUnit() {
+	return unit;
+}
+
+public Variables getVariables() {
+	return variables;
 }
 }
 
 glsl: 
 	{
-		tInt = types.add("int", 1, true);
-		tFloat = types.add("float", 1, false);
-		tVec2 = types.add("vec2", 2, false);
-		tVec3 = types.add("vec3", 3, false);
-		tVec4 = types.add("vec4", 4, false);
-		tVoid = types.add("void", 0, true);
+		tInt = unit.addType("int", 1, true);
+		tFloat = unit.addType("float", 1, false);
+		tVec2 = unit.addType("vec2", 2, false);
+		tVec3 = unit.addType("vec3", 3, false);
+		tVec4 = unit.addType("vec4", 4, false);
+		tVoid = unit.addType("void", 0, true);
 			
+		scope.pushScope(unit);
+		
 		Variable fragColor = variables.add("gl_FragColor", tVec4, false);
+		unit.outputs.add(fragColor);
+		
 		Variable fragCoord = variables.add("gl_FragCoord", tVec2, true);
-				
-		writer.output("gl_FragColor", fragColor);
-		writer.input("gl_FragCoord", fragCoord);
+		unit.inputs.add(fragCoord);
 	}
 	(uniformDeclaration)*
-	{
-		Variable tempVar = variables.add("__tempf", tVec4, false);
-		visitor = new BytecodeVisitor(writer, log, tempVar);
-	}
 	(function|varDeclaration)* EOF
 	{
-		writer.getProgram().setMaxSlots(variables.size());
+		scope.popScope();
 	}
 	;
 
@@ -62,14 +67,14 @@ function:
 	{		
 		int stackIn = 0;
 		for (Variable var : parms) stackIn += var.type.size;
-		writer.write(Bytecode.FUNC, $ID.text, stackIn, $type.t.size);
-		
-		for (Variable var : parms) writer.store(var);
-	
-		functions.add($ID.text, $type.t);
+		Function func = functions.add($ID.text, $type.t, stackIn);
+		scope.pushScope(func);
+		for (Variable var : parms) func.parameters.add(new Parameter(var));
 	}
 	block
-	{writer.write(Bytecode.RETURN);}
+	{
+		scope.popScope();
+	}
 	;
 
 parameter returns [Variable var]: 
@@ -82,13 +87,14 @@ statement:
 	varDeclaration
 	| forStatement
 	| assignment
-	| returnStatement;
+	| returnStatement
+	| {scope.pushScope(new Block());} block {scope.popScope();};
 	
 uniformDeclaration returns [Variable var]:
 	'uniform' type ID
 	{
 		$var = variables.add($ID.text, $type.t, true);
-		writer.input($ID.text, $var);
+		unit.inputs.add($var);
 	} ';'
 	;
 	
@@ -103,8 +109,7 @@ varDeclaration returns [Variable var] :
 		'=' expression
 		{
 			Assignment assignment = new Assignment(new VariableStore($var), $expression.value);
-			System.out.println(assignment);
-			assignment.visit(visitor);
+			scope.add(assignment);
 		}
 	) ';'
 	;
@@ -113,8 +118,7 @@ returnStatement:
 	'return' expression ';'
 	{
 		ReturnStatement rtrn = new ReturnStatement($expression.value);
-		System.out.println(rtrn);
-		rtrn.visit(visitor);
+		scope.add(rtrn);
 	}
 	;
 	
@@ -132,11 +136,11 @@ forStatement:
 		if (test1 != iterator) log.error($iter2, "The condition of the for loop must use the same variable as the initialiser");
 		if (test2 != iterator) log.error($iter3, "The next statement of the for loop must use the same variable as the initialiser");
 		
-		writer.write(Bytecode.REPEAT, $upper.int - $lower.int);
+		scope.pushScope(new Loop($upper.int - $lower.int));
 	}
 	(block | statement)
 	{
-		writer.write(Bytecode.ENDREPEAT);
+		scope.popScope();
 	}
 	;
 
@@ -158,18 +162,17 @@ assignment:
 			VariableLoad varLoad = (swizzle == null ? new VariableLoad(var) : new VariableLoad(var, swizzle));
 			
 			if (op.equals("+="))
-				exprValue = new BinaryOp(varLoad.type, Bytecode.ADD.name(), exprValue, varLoad);
+				exprValue = new BinaryOp(varLoad.type, "ADD", exprValue, varLoad);
 			else if (op.equals("-="))
-				exprValue = new BinaryOp(varLoad.type, Bytecode.SUB.name(), exprValue, varLoad);
+				exprValue = new BinaryOp(varLoad.type, "SUB", exprValue, varLoad);
 			else if (op.equals("*="))
-				exprValue = new BinaryOp(varLoad.type, Bytecode.MUL.name(), exprValue, varLoad);
+				exprValue = new BinaryOp(varLoad.type, "MUL", exprValue, varLoad);
 			else if (op.equals("/="))
-				exprValue = new BinaryOp(varLoad.type, Bytecode.DIV.name(), exprValue, varLoad);
+				exprValue = new BinaryOp(varLoad.type, "DIV", exprValue, varLoad);
 		}
 		
 		Assignment assignment = new Assignment(outVar, exprValue);
-		System.out.println(assignment);
-		assignment.visit(visitor);
+		scope.add(assignment);
 						
 		if (exprValue.type.size == 1 && outVar.type.size > 1) {
 			exprValue = new Value(new Type(outVar.type.size, exprValue.type.integer));
@@ -184,21 +187,21 @@ assignment:
 	;
 
 expression returns [Value value]:
-	FIRST=expression OP='+' term {$value = typeHelper.writeBinaryOp($OP, Bytecode.ADD, $FIRST.value, $term.value);}
-	| FIRST=expression OP='-' term {$value = typeHelper.writeBinaryOp($OP, Bytecode.SUB, $FIRST.value, $term.value);}
+	FIRST=expression OP='+' term {$value = typeHelper.writeBinaryOp($OP, "ADD", $FIRST.value, $term.value);}
+	| FIRST=expression OP='-' term {$value = typeHelper.writeBinaryOp($OP, "SUB", $FIRST.value, $term.value);}
 	| term {$value = $term.value;}
 	;
 
 term returns [Value value]:
-	FIRST=term OP='*' factor {$value = typeHelper.writeBinaryOp($OP, Bytecode.MUL, $FIRST.value, $factor.value);}
-	| FIRST=term OP='/' factor {$value = typeHelper.writeBinaryOp($OP, Bytecode.DIV, $FIRST.value, $factor.value);}
+	FIRST=term OP='*' factor {$value = typeHelper.writeBinaryOp($OP, "MUL", $FIRST.value, $factor.value);}
+	| FIRST=term OP='/' factor {$value = typeHelper.writeBinaryOp($OP, "DIV", $FIRST.value, $factor.value);}
 	| factor {$value = $factor.value;}
 	;
 
 factor returns [Value value]:
 	(
 		atom {$value = $atom.value;}
-		| OP='-' atom {$value = typeHelper.writeUnaryOp($OP, Bytecode.NEG, $atom.value);}
+		| OP='-' atom {$value = typeHelper.writeUnaryOp($OP, "NEG", $atom.value);}
 	)
 	;
 
@@ -250,26 +253,26 @@ construction returns [Value value]:
 	;
 
 builtInCall returns [Value value]:
-	FUN='sin' '(' a=expression ')' {$value = typeHelper.writeUnaryOp($FUN, Bytecode.SIN, $a.value);}
-	| FUN='cos' '(' a=expression ')' {$value = typeHelper.writeUnaryOp($FUN, Bytecode.COS, $a.value);}
-	| FUN='sqrt' '(' a=expression ')' {$value = typeHelper.writeUnaryOp($FUN, Bytecode.SQRT, $a.value);}
-	| FUN='abs' '(' a=expression ')' {$value = typeHelper.writeUnaryOp($FUN, Bytecode.ABS, $a.value);}
-	| FUN='mod' '(' a=expression ',' b=expression ')' {$value = typeHelper.writeBinaryOp($FUN, Bytecode.MOD, $a.value, $b.value);}
-	| FUN='min' '(' a=expression ',' b=expression ')' {$value = typeHelper.writeBinaryOp($FUN, Bytecode.MIN, $a.value, $b.value);}
-	| FUN='max' '(' a=expression ',' b=expression ')' {$value = typeHelper.writeBinaryOp($FUN, Bytecode.MAX, $a.value, $b.value);}
-	| FUN='atan' '(' a=expression ',' b=expression ')' {$value = typeHelper.writeBinaryOp($FUN, Bytecode.ATAN, $a.value, $b.value);}
+	FUN='sin' '(' a=expression ')' {$value = typeHelper.writeUnaryOp($FUN, "SIN", $a.value);}
+	| FUN='cos' '(' a=expression ')' {$value = typeHelper.writeUnaryOp($FUN, "COS", $a.value);}
+	| FUN='sqrt' '(' a=expression ')' {$value = typeHelper.writeUnaryOp($FUN, "SQRT", $a.value);}
+	| FUN='abs' '(' a=expression ')' {$value = typeHelper.writeUnaryOp($FUN, "ABS", $a.value);}
+	| FUN='mod' '(' a=expression ',' b=expression ')' {$value = typeHelper.writeBinaryOp($FUN, "MOD", $a.value, $b.value);}
+	| FUN='min' '(' a=expression ',' b=expression ')' {$value = typeHelper.writeBinaryOp($FUN, "MIN", $a.value, $b.value);}
+	| FUN='max' '(' a=expression ',' b=expression ')' {$value = typeHelper.writeBinaryOp($FUN, "MAX", $a.value, $b.value);}
+	| FUN='atan' '(' a=expression ',' b=expression ')' {$value = typeHelper.writeBinaryOp($FUN, "ATAN", $a.value, $b.value);}
 	| FUN='mix' '(' a=expression ',' b=expression ',' c=expression ')' 
 	{
-		$value = typeHelper.writeTernaryOp($FUN, Bytecode.MIX, $a.value, $b.value, $c.value);
+		$value = typeHelper.writeTernaryOp($FUN, "MIX", $a.value, $b.value, $c.value);
 	}
 	| FUN='smoothstep' '(' a=expression ',' b=expression ',' c=expression ')' 
 	{
-		$value = typeHelper.writeTernaryOp($FUN, Bytecode.SMOOTHSTEP, $a.value, $b.value, $c.value);
+		$value = typeHelper.writeTernaryOp($FUN, "SMOOTHSTEP", $a.value, $b.value, $c.value);
 	}
-	| FUN='step' '(' a=expression ',' b=expression ')' {$value = typeHelper.writeBinaryOp($FUN, Bytecode.STEP, $a.value, $b.value);}
-	| FUN='length' '(' a=expression ')' {$value = typeHelper.writeUnaryOp($FUN, Bytecode.LEN, $a.value);}
-	| FUN='normalize' '(' a=expression ')' {$value = typeHelper.writeUnaryOp($FUN, Bytecode.NORM, $a.value);}
-	| FUN='dot' '(' a=expression ',' b=expression ')' {$value = typeHelper.writeUnaryOp($FUN, Bytecode.DP, $a.value);}
+	| FUN='step' '(' a=expression ',' b=expression ')' {$value = typeHelper.writeBinaryOp($FUN, "STEP", $a.value, $b.value);}
+	| FUN='length' '(' a=expression ')' {$value = typeHelper.writeUnaryOp($FUN, "LEN", tFloat, $a.value);}
+	| FUN='normalize' '(' a=expression ')' {$value = typeHelper.writeUnaryOp($FUN, "NORM", $a.value);}
+	| FUN='dot' '(' a=expression ',' b=expression ')' {$value = typeHelper.writeUnaryOp($FUN, "DP", $a.value);}
 	;
 
 functionCall returns [Value value]:

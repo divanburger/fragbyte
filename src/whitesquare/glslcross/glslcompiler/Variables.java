@@ -6,7 +6,7 @@ import java.util.Map;
 import whitesquare.glslcross.ast.Type;
 import whitesquare.glslcross.ast.Variable;
 
-public class Variables {
+class Variables {
 	public int top = 0;
 	Map<String, Variable> variables = new HashMap<String, Variable>();
 	
@@ -19,7 +19,7 @@ public class Variables {
 	
 	public Variable add(String name, Type type, boolean constant) {
 		System.out.println("Allocated: " + top + "-" + (top+type.size-1) + " => " + name);
-		Variable var = new Variable(top, type, constant);
+		Variable var = new Variable(name, top, type, constant);
 		variables.put(name, var);
 		top += type.size;
 		return var;

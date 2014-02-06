@@ -1,12 +1,12 @@
 uniform vec3 iResolution;
 uniform float iGlobalTime;
 
-const float PI=3.14159265358979323846;
+//const float PI=3.14159265358979323846;
 
-float speed=iGlobalTime*0.2975;
-float ground_x=1.0-0.325*sin(PI*speed*0.25);
-float ground_y=1.0;
-float ground_z=0.5;
+//float speed=iGlobalTime*0.2975;
+//float ground_x=1.0-0.325*sin(PI*speed*0.25);
+//float ground_y=1.0;
+//float ground_z=0.5;
 
 vec2 rotate(vec2 k,float t)
 {
@@ -15,6 +15,13 @@ vec2 rotate(vec2 k,float t)
 
 float draw_scene(vec3 p)
 {
+	const float PI=3.14159265358979323846;
+
+	float speed=iGlobalTime*0.2975;
+	float ground_x=1.0-0.325*sin(PI*speed*0.25);
+	float ground_y=1.0;
+	float ground_z=0.5;
+
 	float tunnel_m=0.125*cos(PI*p.z*1.0+speed*4.0-PI);
 	float tunnel1_p=2.0;
 	float tunnel1_w=tunnel1_p*0.225;
@@ -43,6 +50,10 @@ float draw_scene(vec3 p)
 
 void main(void)
 {
+	const float PI=3.14159265358979323846;
+
+	float speed=iGlobalTime*0.2975;
+
 	vec2 position=(gl_FragCoord.xy/iResolution.xy);
 	vec2 p=position*2.0-1.0;
 	vec3 dir=normalize(vec3(p*vec2(1.77,1.0),1.0));		// screen ratio (x,y) fov (z)

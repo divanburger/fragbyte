@@ -7,7 +7,7 @@ import whitesquare.glslcross.bytecode.Instruction;
 import whitesquare.glslcross.bytecode.Program;
 import whitesquare.glslcross.bytecode.ProgramParameter;
 
-public class UnusedSlotOptimizer implements Optimizer {
+public class UnusedSlotOptimizer implements BytecodeOptimizer {
 
 	private class Slot {
 		int newSlot = 0;
