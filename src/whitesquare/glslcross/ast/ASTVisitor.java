@@ -16,7 +16,9 @@ public interface ASTVisitor {
 	public void visitParameter(Parameter parameter);
 	public void visitReturnStatement(ReturnStatement rtrn);
 	public void visitSwizzleValue(SwizzleValue swizzleValue);
-	public void visitTernaryOp(TernaryOp op);
+	public void visitTernaryOpAfterFirst(TernaryOp op);
+	public void visitTernaryOpAfterSecond(TernaryOp op);
+	public void visitTernaryOpEnd(TernaryOp op);
 	public void visitUnaryOp(UnaryOp op);
 	public void visitUnitStart(Unit unit);
 	public void visitUnitEnd(Unit unit);

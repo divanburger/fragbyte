@@ -67,6 +67,11 @@ public class BytecodeVisitor implements ASTVisitor {
 
 	@Override
 	public void visitConstruction(Construction construction) {
+		if (construction.arguments.size() == 1) {
+			Type argType = construction.arguments.get(0).type;
+			if (construction.type.size > argType.size)
+				writer.writeWideOp(Bytecode.DUPS, construction.type.size - argType.size);
+		}
 	}
 
 	@Override
@@ -118,9 +123,26 @@ public class BytecodeVisitor implements ASTVisitor {
 	}
 
 	@Override
-	public void visitTernaryOp(TernaryOp op) {
-		Type a = op.mid.type, b = op.right.type;
-		if (a.size != b.size && b.size == 1) writer.writeWideOp(Bytecode.DUPS, a.size - b.size);
+	public void visitTernaryOpAfterFirst(TernaryOp op) {
+		Type a = op.left.type, b = op.mid.type, c = op.right.type;
+		int maxSize = Math.max(Math.max(a.size, b.size), c.size);
+		
+		if (a.size != maxSize && a.size == 1) writer.writeWideOp(Bytecode.DUPS, maxSize - a.size);
+	}
+	@Override
+	public void visitTernaryOpAfterSecond(TernaryOp op) {
+		Type a = op.left.type, b = op.mid.type, c = op.right.type;
+		int maxSize = Math.max(Math.max(a.size, b.size), c.size);
+		
+		if (b.size != maxSize && b.size == 1) writer.writeWideOp(Bytecode.DUPS, maxSize - b.size);
+	}
+	
+	@Override
+	public void visitTernaryOpEnd(TernaryOp op) {
+		Type a = op.left.type, b = op.mid.type, c = op.right.type;
+		int maxSize = Math.max(Math.max(a.size, b.size), c.size);
+
+		if (c.size != maxSize && c.size == 1) writer.writeWideOp(Bytecode.DUPS, maxSize - c.size);
 		writer.writeWideOp(Bytecode.valueOf(op.op), op.type.size);
 	}
 

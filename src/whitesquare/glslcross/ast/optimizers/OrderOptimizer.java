@@ -100,9 +100,17 @@ public class OrderOptimizer implements ASTOptimizer, ASTVisitor {
 	}
 
 	@Override
-	public void visitTernaryOp(TernaryOp op) {		
+	public void visitTernaryOpAfterFirst(TernaryOp op) {		
 	}
 
+	@Override
+	public void visitTernaryOpAfterSecond(TernaryOp op) {		
+	}
+	
+	@Override
+	public void visitTernaryOpEnd(TernaryOp op) {		
+	}
+	
 	@Override
 	public void visitUnaryOp(UnaryOp op) {		
 	}

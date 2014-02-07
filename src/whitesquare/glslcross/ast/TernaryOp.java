@@ -17,9 +17,11 @@ public class TernaryOp extends Value {
 	@Override
 	public void visit(ASTVisitor visitor) {
 		left.visit(visitor);
+		visitor.visitTernaryOpAfterFirst(this);
 		mid.visit(visitor);
+		visitor.visitTernaryOpAfterSecond(this);
 		right.visit(visitor);
-		visitor.visitTernaryOp(this);
+		visitor.visitTernaryOpEnd(this);
 	}
 	
 	@Override

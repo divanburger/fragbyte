@@ -11,7 +11,7 @@ import whitesquare.glslcross.ast.optimizers.*;
 private Functions functions = new Functions();
 private Variables variables = new Variables();
 private LogWriter log = null;
-private TypeHelper typeHelper = new TypeHelper(log);
+private TypeHelper typeHelper = null;
 private ScopeManager scope = new ScopeManager();
 private Type tInt;
 private Type tFloat;
@@ -19,6 +19,7 @@ private Type tVec2;
 private Type tVec3;
 private Type tVec4;
 private Type tVoid;
+private Type tError;
 private Unit unit = new Unit();
 
 public void setLog(LogWriter log) {
@@ -42,6 +43,9 @@ glsl:
 		tVec3 = unit.addType("vec3", 3, false);
 		tVec4 = unit.addType("vec4", 4, false);
 		tVoid = unit.addType("void", 0, true);
+		tError = unit.addType("_ERROR_", 0, true);
+		
+		typeHelper = new TypeHelper(log, tError);
 			
 		scope.pushScope(unit);
 		
@@ -237,7 +241,7 @@ atom returns [Value value]:
 			else
 				$value = new VariableLoad(var, swizzle);
 		} else {
-			$value = new Value(tVoid);
+			$value = new Value(tError);
 			log.error($ID, "Variable '" + $ID.text + "' does not exist");
 		}
 	}
@@ -261,10 +265,15 @@ builtInCall returns [Value value]:
 	| FUN='min' '(' a=expression ',' b=expression ')' {$value = typeHelper.writeBinaryOp($FUN, "MIN", $a.value, $b.value);}
 	| FUN='max' '(' a=expression ',' b=expression ')' {$value = typeHelper.writeBinaryOp($FUN, "MAX", $a.value, $b.value);}
 	| FUN='atan' '(' a=expression ',' b=expression ')' {$value = typeHelper.writeBinaryOp($FUN, "ATAN", $a.value, $b.value);}
+	| FUN='pow' '(' a=expression ',' b=expression ')' {$value = typeHelper.writeBinaryOp($FUN, "POW", $a.value, $b.value);}
 	| FUN='mix' '(' a=expression ',' b=expression ',' c=expression ')' 
 	{
-		$value = typeHelper.writeTernaryOp($FUN, "MIX", $a.value, $b.value, $c.value);
+		$value = typeHelper.writeTernaryOpAny($FUN, "MIX", $a.value, $b.value, $c.value);
 	}
+	| FUN='clamp' '(' a=expression ',' b=expression ',' c=expression ')' 
+	{
+		$value = typeHelper.writeTernaryOpTwoSingle($FUN, "CLAMP", $a.value, $b.value, $c.value);
+	}	
 	| FUN='smoothstep' '(' a=expression ',' b=expression ',' c=expression ')' 
 	{
 		$value = typeHelper.writeTernaryOp($FUN, "SMOOTHSTEP", $a.value, $b.value, $c.value);
@@ -278,6 +287,7 @@ builtInCall returns [Value value]:
 functionCall returns [Value value]:
 	ID 
 	{
+		System.out.println($ID.text);
 		Function func = functions.get($ID.text);
 		if (func == null) {
 			log.error($ID, "Function '" + $ID.text + "' does not exist");
@@ -285,9 +295,13 @@ functionCall returns [Value value]:
 	}
 	'(' args+=expression? (',' args+=expression)* ')'
 	{
-		ArrayList<Value> inputs = new ArrayList<Value>();
-		for (ExpressionContext exp : $args) inputs.add(exp.value);
-		$value = new FunctionCall(func, inputs);
+		if (func != null) {
+			ArrayList<Value> inputs = new ArrayList<Value>();
+			for (ExpressionContext exp : $args) inputs.add(exp.value);
+			$value = new FunctionCall(func, inputs);
+		}
+		else
+			$value = new Value(tError);
 	}
 	;
 
@@ -308,7 +322,7 @@ type returns [Type t]:
 SWIZZLE : '.' ([xyzw]+ | [rgba]+ | [stpq]+);
 
 INTEGER : [0-9]+;
-FLOAT : [0-9]+ '.' [0-9]* ;
+FLOAT : [0-9]* ([0-9] '.' | '.' [0-9]) [0-9]*;
 
 ID : [A-Za-z][A-Za-z0-9_]* ;
 

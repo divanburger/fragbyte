@@ -5,3 +5,6 @@ cpprenderer/main
 
 tests/*_orig.byte
 tests/*_pre.byte
+
+grammar/*.tokens
+grammar/*.java

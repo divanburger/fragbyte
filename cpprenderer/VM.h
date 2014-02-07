@@ -362,7 +362,7 @@ struct VM {
 					int st = i+sp*instances;
 					float a = stack[st-1*instances];
 					float b = stack[st-2*instances];
-					stack[st-2*instances] = atan2(a, b);
+					stack[st-2*instances] = atan2(b, a);
 				}
 				sp--;
 				break;
@@ -684,9 +684,54 @@ struct VM {
 				}
 				sp-=4;
 				break;
+			case Bytecode::POW:
+				//cout << "POW" << endl;
+				fullLoadConstant(sp, 2);
+				
+				for (int i = 0; i < instances; i++)
+				{
+					int st = i+sp*instances;
+					stack[st-2*instances] = pow(stack[st-2*instances], stack[st-1*instances]);
+				}
+				sp--;
+				break;
+			case Bytecode::POW2:
+				//cout << "POW2" << endl;
+				fullLoadConstant(sp, 4);
+				
+				for (int i = 0; i < instances*2; i++)
+				{
+					int st = i+sp*instances;
+					stack[st-4*instances] = pow(stack[st-4*instances], stack[st-2*instances]);
+				}
+				sp-=2;
+				break;
+			case Bytecode::POW3:
+				//cout << "POW3" << endl;
+				fullLoadConstant(sp, 6);
+				
+				for (int i = 0; i < instances*3; i++)
+				{
+					int st = i+sp*instances;
+					stack[st-6*instances] = pow(stack[st-6*instances], stack[st-3*instances]);
+				}
+				sp-=3;
+				break;
+			case Bytecode::POW4:
+				//cout << "MOD4" << endl;
+				fullLoadConstant(sp, 8);
+				
+				for (int i = 0; i < instances*4; i++)
+				{
+					int st = i+sp*instances;
+					stack[st-8*instances] = pow(stack[st-8*instances], stack[st-4*instances]);
+				}
+				sp-=4;
+				break;
 			case Bytecode::MAD:
 				if (stackFlags[sp-3] == CONSTANT && stackFlags[sp-2] == CONSTANT) {
 					stackFlags[sp-3] = NONE;
+					stackFlags[sp-2] = NONE;
 					fullLoadConstant(sp, 1);
 					
 					for (int i = 0; i < instances; i++)
@@ -885,6 +930,66 @@ struct VM {
 					v2 = stack[st-8*instances];
 					vf = stack[st-4*instances];
 					stack[st-12*instances] = v1 + (v2-v1)*vf;
+				}
+				sp-=8;
+				break;
+			case Bytecode::CLAMP:
+				//cout << "CLAMP" << endl;
+				fullLoadConstant(sp, 3);
+				
+				for (int i = 0; i < instances; i++)
+				{
+					int st = i+sp*instances;
+					float v1, v2, v3;
+					v1 = stack[st-3*instances];
+					v2 = stack[st-2*instances];
+					v3 = stack[st-1*instances];
+					stack[st-3*instances] = max(min(v1, v3), v2);
+				}
+				sp-=2;
+				break;
+			case Bytecode::CLAMP2:
+				//cout << "CLAMP2" << endl;
+				fullLoadConstant(sp, 6);
+				
+				for (int i = 0; i < instances*2; i++)
+				{
+					int st = i+sp*instances;
+					float v1, v2, v3;
+					v1 = stack[st-6*instances];
+					v2 = stack[st-4*instances];
+					v3 = stack[st-2*instances];
+					stack[st-6*instances] = max(min(v1, v3), v2);
+				}
+				sp-=4;
+				break;
+			case Bytecode::CLAMP3:
+				//cout << "CLAMP3" << endl;
+				fullLoadConstant(sp, 9);
+				
+				for (int i = 0; i < instances*3; i++)
+				{
+					int st = i+sp*instances;
+					float v1, v2, v3;
+					v1 = stack[st-9*instances];
+					v2 = stack[st-6*instances];
+					v3 = stack[st-3*instances];
+					stack[st-9*instances] = max(min(v1, v3), v2);
+				}
+				sp-=6;
+				break;
+			case Bytecode::CLAMP4:
+				//cout << "CLAMP4" << endl;
+				fullLoadConstant(sp, 12);
+				
+				for (int i = 0; i < instances*4; i++)
+				{
+					int st = i+sp*instances;
+					float v1, v2, v3;
+					v1 = stack[st-12*instances];
+					v2 = stack[st-8*instances];
+					v3 = stack[st-4*instances];
+					stack[st-12*instances] = max(min(v1, v3), v2);
 				}
 				sp-=8;
 				break;

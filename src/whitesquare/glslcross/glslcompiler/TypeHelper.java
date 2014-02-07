@@ -10,16 +10,20 @@ import whitesquare.glslcross.ast.Value;
 
 class TypeHelper {
 	private LogWriter log;
+	private Type errorType;
 	
-	public TypeHelper(LogWriter log) {
+	public TypeHelper(LogWriter log, Type errorType) {
 		this.log = log;
+		this.errorType = errorType;
 	}
 	
 	Value writeUnaryOp(Token token, String op, Type resultType, Value a) {
 		if (a == null) {
 			log.error(token, "One is null: " + op + " " + a);
-			return null;
+			return new Value(errorType);
 		}
+		
+		if (a.type == errorType) return new Value(errorType); // Ignore already handled errors
 		
 		return new UnaryOp(resultType, op, a);
 	}	
@@ -27,8 +31,10 @@ class TypeHelper {
 	Value writeUnaryOp(Token token, String op, Value a) {
 		if (a == null) {
 			log.error(token, "One is null: " + op + " " + a);
-			return null;
+			return new Value(errorType);
 		}
+
+		if (a.type == errorType) return new Value(errorType); // Ignore already handled errors
 		
 		return new UnaryOp(a.type, op, a);
 	}
@@ -36,29 +42,65 @@ class TypeHelper {
 	Value writeBinaryOp(Token token, String op, Value a, Value b) {
 		if (a == null || b == null) {
 			log.error(token, "One is null: " + op + " " + a + " " + b);
-			return null;
+			return new Value(errorType);
 		}
+
+		if (a.type == errorType || b.type == errorType) return new Value(errorType); // Ignore already handled errors
 		
-		if (a.type.size == b.type.size || b.type.size == 1) return new BinaryOp(a.type, op, a, b);
+		if (a.type.size == b.type.size || b.type.size == 1 || a.type.size == 1) 
+			return new BinaryOp(a.type.size >= b.type.size ? a.type : b.type, op, a, b);
 		
-		log.error(token, "'" + a + "' and '" + b + "' are incompatible (Binary Op)");
-		return null;
+		log.error(token, "'" + a.type + "' and '" + b.type + "' are incompatible (" + op + ")");
+		return new Value(errorType);
 	}
 	
 	Value writeTernaryOp(Token token, String op, Value a, Value b, Value c) {
 		if (a == null || b == null || c== null) {
 			log.error(token, "One is null: " + op + " " + a + " " + b + " " + c);
-			return null;
+			return new Value(errorType);
 		}
 		
+		if (a.type == errorType || b.type == errorType || c.type == errorType) return new Value(errorType); // Ignore already handled errors
+		
 		if (a.type.size != b.type.size) {
-			log.error(token, "'" + a + "' and '" + b + "' are incompatible (Ternary Op)");
-			return null;
+			log.error(token, "First parameter of type '" + a.type + "' and the second parameter of type '" + b.type + "' are incompatible (" + op + ")");
+			return new Value(errorType);
 		}
 		
 		if (b.type.size == c.type.size || c.type.size == 1) return new TernaryOp(a.type, op, a, b, c);
 		
-		log.error(token, "'" + c + "' is incompatible (Ternary Op)");
-		return null;
+		log.error(token, "'" + c.type + "' is incompatible (" + op + ")");
+		return new Value(errorType);
+	}
+	
+	Value writeTernaryOpAny(Token token, String op, Value a, Value b, Value c) {
+		if (a == null || b == null || c== null) {
+			log.error(token, "One is null: " + op + " " + a + " " + b + " " + c);
+			return new Value(errorType);
+		}
+		
+		if (a.type == errorType || b.type == errorType || c.type == errorType) return new Value(errorType); // Ignore already handled errors
+		
+		int maxSize = Math.max(Math.max(a.type.size, b.type.size), c.type.size);
+		
+		if ((a.type.size == maxSize || a.type.size == 1) && (b.type.size == maxSize || b.type.size == 1) && (c.type.size == maxSize || c.type.size == 1)) 
+			return new TernaryOp(a.type, op, a, b, c);
+		
+		log.error(token, "'" + a.type + "', '" + b.type + "' and '" + c.type + "' are incompatible (" + op + ")");
+		return new Value(errorType);
+	}
+	
+	Value writeTernaryOpTwoSingle(Token token, String op, Value a, Value b, Value c) {
+		if (a == null || b == null || c== null) {
+			log.error(token, "One is null: " + op + " " + a + " " + b + " " + c);
+			return new Value(errorType);
+		}
+		
+		if (a.type == errorType || b.type == errorType || c.type == errorType) return new Value(errorType); // Ignore already handled errors
+		
+		if ((a.type.size == b.type.size || b.type.size == 1) && (a.type.size == c.type.size || c.type.size == 1)) return new TernaryOp(a.type, op, a, b, c);
+
+		log.error(token, "'" + a.type + "', '" + b.type + "' and '" + c.type + "' are incompatible (" + op + ")");
+		return new Value(errorType);
 	}
 }

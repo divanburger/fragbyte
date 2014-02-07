@@ -23,7 +23,7 @@ import whitesquare.glslcross.glslcompiler.GLSLLexer;
 import whitesquare.glslcross.glslcompiler.GLSLParser;
 
 public class GLSLCompiler {
-	public String prefix = "tests/test2"; 
+	public String prefix = "tests/test7"; 
 	
 	public GLSLCompiler() {
 		parse(prefix + ".glsl");
@@ -71,7 +71,7 @@ public class GLSLCompiler {
 			ANTLRFileStream stream = new ANTLRFileStream(filename);
 			GLSLLexer lexer = new GLSLLexer(stream);
 			GLSLParser parser = new GLSLParser(new CommonTokenStream(lexer));
-			
+			parser.setLog(log);
 			parser.glsl();
 			Unit unit = parser.getUnit();
 						

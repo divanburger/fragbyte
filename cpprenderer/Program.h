@@ -123,6 +123,14 @@ struct Program {
 				instructions.push_back({Bytecode::MOD3});
 			else if (tokens[0] == "MOD4")
 				instructions.push_back({Bytecode::MOD4});
+			else if (tokens[0] == "POW")
+				instructions.push_back({Bytecode::POW});
+			else if (tokens[0] == "POW2")
+				instructions.push_back({Bytecode::POW2});
+			else if (tokens[0] == "POW3")
+				instructions.push_back({Bytecode::POW3});
+			else if (tokens[0] == "POW4")
+				instructions.push_back({Bytecode::POW4});
 			else if (tokens[0] == "MAD")
 				instructions.push_back({Bytecode::MAD});
 			else if (tokens[0] == "MAD2")
@@ -155,6 +163,14 @@ struct Program {
 				instructions.push_back({Bytecode::MIX3});
 			else if (tokens[0] == "MIX4")
 				instructions.push_back({Bytecode::MIX4});
+			else if (tokens[0] == "CLAMP")
+				instructions.push_back({Bytecode::CLAMP});
+			else if (tokens[0] == "CLAMP2")
+				instructions.push_back({Bytecode::CLAMP2});
+			else if (tokens[0] == "CLAMP3")
+				instructions.push_back({Bytecode::CLAMP3});
+			else if (tokens[0] == "CLAMP4")
+				instructions.push_back({Bytecode::CLAMP4});
 			else if (tokens[0] == "STEP")
 				instructions.push_back({Bytecode::STEP});
 			else if (tokens[0] == "SMOOTHSTEP")
