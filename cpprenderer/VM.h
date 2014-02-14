@@ -19,6 +19,7 @@ struct VM {
 		stack = (float*)calloc(instances * program.maxStack, sizeof(float));
 		slots = (float*)calloc(instances * program.maxSlots, sizeof(float));
 
+		icount = (double*)calloc(program.instructions.size(), sizeof(double));
 		for (int i = 0; i < Bytecode::MAX_BYTECODE; i++) {
 			scount[i] = 0;
 			tcount[i] = 0.0;
@@ -32,10 +33,13 @@ struct VM {
 		free(stackConst);
 		free(stack);
 		free(slots);
+		free(icount);
 
 		for (int i = 0; i < Bytecode::MAX_BYTECODE; i++) {
-			double avg = tcount[i] / scount[i];
-			cout << i << ": " << avg << "ms (" << scount[i] << ", " << tcount[i] << "ms)" << endl;
+			if (scount[i] > 0) {
+				double avg = tcount[i] / scount[i];
+				cout << bytecodeNames[i] << ": " << avg << "ms (" << scount[i] << ", " << tcount[i] << "ms)" << endl;
+			}
 		}
 	}
 
@@ -51,15 +55,18 @@ struct VM {
 		clock_gettime(CLOCK_REALTIME, &ts);
 		uint64_t start = (uint64_t)ts.tv_sec * 1000000LL + (uint64_t)ts.tv_nsec / 1000LL;
 
+		int startIp = ip;
 		bool res = doInstr();
 
 		timespec ts_end;
 		clock_gettime(CLOCK_REALTIME, &ts);
 		uint64_t end = (uint64_t)ts.tv_sec * 1000000LL + (uint64_t)ts.tv_nsec / 1000LL;
 
-		Bytecode b = program.instructions[ip].bytecode;
+		Bytecode b = program.instructions[startIp].bytecode;
 		scount[b]++;
-		tcount[b] += (end - start) * 0.001;
+		double t = (end - start) * 0.001;
+		tcount[b] += t;
+		icount[startIp] += t;
 
 		return res;
 	}
@@ -270,6 +277,17 @@ struct VM {
 					{
 						int st = i+sp*instances;
 						stack[st-1*instances] = 1.0f / stack[st-1*instances];
+					}
+				}
+				break;
+			case Bytecode::EXP:
+				if (stackFlags[sp-1] == CONSTANT) {
+					stackConst[sp-1] = exp(stackConst[sp-1]);
+				} else {
+					for (int i = 0; i < instances; i++)
+					{
+						int st = i+sp*instances;
+						stack[st-1*instances] = exp(stack[st-1*instances]);
 					}
 				}
 				break;
@@ -585,6 +603,39 @@ struct VM {
 					stack[st-8*instances] *= stack[st-4*instances];
 				}
 				sp-=4;
+				break;
+			case Bytecode::MULS2:
+				fullLoadConstant(sp, 3);
+				
+				for (int j = 0; j < 2; j++)
+					for (int i = 0; i < instances; i++)
+					{
+						int st = i+sp*instances;
+						stack[st-(3-j)*instances] *= stack[st-instances];
+					}
+				sp-=1;
+				break;
+			case Bytecode::MULS3:
+				fullLoadConstant(sp, 4);
+				
+				for (int j = 0; j < 3; j++)
+					for (int i = 0; i < instances; i++)
+					{
+						int st = i+sp*instances;
+						stack[st-(4-j)*instances] *= stack[st-instances];
+					}
+				sp-=1;
+				break;
+			case Bytecode::MULS4:
+				fullLoadConstant(sp, 5);
+				
+				for (int j = 0; j < 4; j++)
+					for (int i = 0; i < instances; i++)
+					{
+						int st = i+sp*instances;
+						stack[st-(5-j)*instances] *= stack[st-instances];
+					}
+				sp-=1;
 				break;
 			case Bytecode::DIV:
 				if (stackFlags[sp-2] == CONSTANT) {
@@ -933,6 +984,51 @@ struct VM {
 				}
 				sp-=8;
 				break;
+			case Bytecode::MIXS2:
+				fullLoadConstant(sp, 5);
+				
+				for (int j = 0; j < 2; j++)
+					for (int i = 0; i < instances; i++)
+					{
+						int st = i+sp*instances;
+						float v1, v2, vf;
+						v1 = stack[st-(5-j)*instances];
+						v2 = stack[st-(3-j)*instances];
+						vf = stack[st-instances];
+						stack[st-(5-j)*instances] = v1 + (v2-v1)*vf;
+					}
+				sp-=3;
+				break;
+			case Bytecode::MIXS3:
+				fullLoadConstant(sp, 7);
+				
+				for (int j = 0; j < 3; j++)
+					for (int i = 0; i < instances; i++)
+					{
+						int st = i+sp*instances;
+						float v1, v2, vf;
+						v1 = stack[st-(7-j)*instances];
+						v2 = stack[st-(4-j)*instances];
+						vf = stack[st-instances];
+						stack[st-(7-j)*instances] = v1 + (v2-v1)*vf;
+					}
+				sp-=4;
+				break;
+			case Bytecode::MIXS4:
+				fullLoadConstant(sp, 9);
+				
+				for (int j = 0; j < 4; j++)
+					for (int i = 0; i < instances*4; i++)
+					{
+						int st = i+sp*instances;
+						float v1, v2, vf;
+						v1 = stack[st-(9-j)*instances];
+						v2 = stack[st-(5-j)*instances];
+						vf = stack[st-instances];
+						stack[st-(9-j)*instances] = v1 + (v2-v1)*vf;
+					}
+				sp-=5;
+				break;
 			case Bytecode::CLAMP:
 				//cout << "CLAMP" << endl;
 				fullLoadConstant(sp, 3);
@@ -1058,7 +1154,8 @@ struct VM {
 					v1 = stack[st-3*instances];
 					v2 = stack[st-2*instances];
 					vf = stack[st-1*instances];
-					stack[st-3*instances] = clamp((vf-v1)/(v2-v1), 0.0f, 1.0f);
+					float r = clamp((vf-v1)/(v2-v1), 0.0f, 1.0f);
+					stack[st-3*instances] = r*r*(3.0f-2.0f*r);
 				}
 				sp-=2;
 				break;
@@ -1073,7 +1170,8 @@ struct VM {
 					v1 = stack[st-3*instances]; // Orig: -v1 / (v2 - v1)
 					v2 = stack[st-2*instances]; // Orig: 1 / (v2 - v1)
 					vf = stack[st-1*instances];
-					stack[st-3*instances] = clamp(vf*v2+v1, 0.0f, 1.0f);
+					float r = clamp(vf*v2+v1, 0.0f, 1.0f);
+					stack[st-3*instances] = r*r*(3.0f-2.0f*r);
 				}
 				sp-=2;
 				break;
@@ -1222,7 +1320,8 @@ struct VM {
 	float *slots;
 
 	// Stats
-	int scount[Bytecode::MAX_BYTECODE];
+	double* icount;
+	uint32_t scount[Bytecode::MAX_BYTECODE];
 	double tcount[Bytecode::MAX_BYTECODE];
 };
 

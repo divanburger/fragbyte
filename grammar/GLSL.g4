@@ -52,7 +52,7 @@ glsl:
 		Variable fragColor = variables.add("gl_FragColor", tVec4, false);
 		unit.outputs.add(fragColor);
 		
-		Variable fragCoord = variables.add("gl_FragCoord", tVec2, true);
+		Variable fragCoord = variables.add("gl_FragCoord", tVec2, false);
 		unit.inputs.add(fragCoord);
 	}
 	(uniformDeclaration)*
@@ -97,7 +97,7 @@ statement:
 uniformDeclaration returns [Variable var]:
 	'uniform' type ID
 	{
-		$var = variables.add($ID.text, $type.t, true);
+		$var = variables.add($ID.text, $type.t, false);
 		unit.inputs.add($var);
 	} ';'
 	;
@@ -261,6 +261,7 @@ builtInCall returns [Value value]:
 	| FUN='cos' '(' a=expression ')' {$value = typeHelper.writeUnaryOp($FUN, "COS", $a.value);}
 	| FUN='sqrt' '(' a=expression ')' {$value = typeHelper.writeUnaryOp($FUN, "SQRT", $a.value);}
 	| FUN='abs' '(' a=expression ')' {$value = typeHelper.writeUnaryOp($FUN, "ABS", $a.value);}
+	| FUN='exp' '(' a=expression ')' {$value = typeHelper.writeUnaryOp($FUN, "EXP", $a.value);}
 	| FUN='mod' '(' a=expression ',' b=expression ')' {$value = typeHelper.writeBinaryOp($FUN, "MOD", $a.value, $b.value);}
 	| FUN='min' '(' a=expression ',' b=expression ')' {$value = typeHelper.writeBinaryOp($FUN, "MIN", $a.value, $b.value);}
 	| FUN='max' '(' a=expression ',' b=expression ')' {$value = typeHelper.writeBinaryOp($FUN, "MAX", $a.value, $b.value);}

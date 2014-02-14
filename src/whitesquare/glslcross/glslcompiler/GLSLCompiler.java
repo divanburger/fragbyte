@@ -10,6 +10,7 @@ import whitesquare.glslcross.ast.Node;
 import whitesquare.glslcross.ast.Unit;
 import whitesquare.glslcross.ast.Variable;
 import whitesquare.glslcross.ast.optimizers.ASTOptimizer;
+import whitesquare.glslcross.ast.optimizers.ConstantFoldingOptimizer;
 import whitesquare.glslcross.ast.optimizers.OrderOptimizer;
 import whitesquare.glslcross.bytecode.Program;
 import whitesquare.glslcross.bytecode.analyzer.StackAnalyzer;
@@ -23,15 +24,29 @@ import whitesquare.glslcross.glslcompiler.GLSLLexer;
 import whitesquare.glslcross.glslcompiler.GLSLParser;
 
 public class GLSLCompiler {
-	public String prefix = "tests/test7"; 
+	public String prefix = "tests/test2"; 
 	
 	public GLSLCompiler() {
 		parse(prefix + ".glsl");
 	}
 	
-	public void optimizeAST(Node ast) {
+	public void optimizeAST(Unit ast) {
+		ArrayList<ASTOptimizer> astOptimizers = new ArrayList<ASTOptimizer>();
+		
+		astOptimizers.add(new OrderOptimizer());
+		astOptimizers.add(new ConstantFoldingOptimizer(ast.getType("int"), ast.getType("float")));
+		
 		ASTOptimizer orderOptimizer = new OrderOptimizer();
 		orderOptimizer.optimize(ast);
+		
+		for (int i = 0; i < 32; i++) {
+			boolean changes = false;
+			for (ASTOptimizer astOptimizer : astOptimizers)
+				changes |= astOptimizer.optimize(ast);
+
+			System.out.println("After phase " + i);
+			if (!changes) break;
+		}
 	}
 	
 	public void optimize(Program program) {
@@ -45,7 +60,7 @@ public class GLSLCompiler {
 		
 		System.out.println("Before optimization: " + program.instructions.size() + " instr - " + program.maxSlots + " slots");
 		
-		phaseLoop: for (int i = 0; i < 32; i++) {
+		for (int i = 0; i < 32; i++) {
 			boolean changes = false;
 			for (BytecodeOptimizer bytecodeOptimizer : bytecodeOptimizers) {
 				changes |= bytecodeOptimizer.optimize(program);
@@ -53,7 +68,8 @@ public class GLSLCompiler {
 				StackAnalyzer stackAnalyzer = new StackAnalyzer(false);
 				if (!stackAnalyzer.analyze(program)) {
 					System.out.println("Resulting program is invalid!!! (Phase " + i + " : " + BytecodeOptimizer.class.getName() + ")");
-					break phaseLoop;
+					changes = true;
+					break;
 				}
 			}
 			

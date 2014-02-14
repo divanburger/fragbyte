@@ -35,6 +35,10 @@ public class OrderOptimizer implements ASTOptimizer, ASTVisitor {
 	}
 
 	@Override
+	public void visitBinaryOpBegin(BinaryOp op) {		
+	}
+	
+	@Override
 	public void visitBinaryOpMid(BinaryOp op) {		
 	}
 
@@ -43,12 +47,19 @@ public class OrderOptimizer implements ASTOptimizer, ASTVisitor {
 		Value left = op.left;
 		Value right = op.right;
 		
-		/*if (op.op.equals("MUL") || op.op.equals("ADD")) {
+		if (op.op.equals("MUL") || op.op.equals("ADD")) {
 			if (left.type.size == 1 && right.type.size > 1) {
+				System.out.println("SWAP");
 				op.right = left;
 				op.left = right;
+				changes = true;
+			} else if (left.constant && !right.constant) {
+				System.out.println("SWAP CONST");
+				op.right = left;
+				op.left = right;
+				changes = true;
 			}
-		}*/
+		}
 	}
 
 	@Override

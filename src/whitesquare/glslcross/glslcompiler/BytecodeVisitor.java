@@ -44,6 +44,10 @@ public class BytecodeVisitor implements ASTVisitor {
 	}
 	
 	@Override
+	public void visitBinaryOpBegin(BinaryOp op) {
+	}
+	
+	@Override
 	public void visitBinaryOpMid(BinaryOp op) {
 		Type a = op.left.type, b = op.right.type;
 		if (a.size != b.size && a.size == 1) writer.writeWideOp(Bytecode.DUPS, b.size - a.size);

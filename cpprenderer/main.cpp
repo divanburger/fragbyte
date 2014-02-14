@@ -45,6 +45,7 @@ int main(int argc, char const *argv[]) {
 	bool running = true;
 	long long start = SDL_GetTicks();
 	long long last = start;
+	long long frames = 0;
 	while (running)
 	{
 		SDL_Event event;
@@ -85,6 +86,12 @@ int main(int argc, char const *argv[]) {
 		SDL_DestroyTexture(tex);
 
 		time += 0.1;
+		frames++;
+	}
+
+	std::cout << "-= Instruction Hotspot =-" << std::endl;
+	for (int i = 0; i < program.instructions.size(); i++) {
+		std::cout << i << ": " << (vm.icount[i] / frames) << " ~ " << bytecodeNames[program.instructions[i].bytecode] << std::endl;
 	}
 
 	SDL_DestroyRenderer(ren);

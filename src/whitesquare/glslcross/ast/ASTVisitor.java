@@ -2,6 +2,7 @@ package whitesquare.glslcross.ast;
 
 public interface ASTVisitor {
 	public void visitAssignment(Assignment assignment);
+	public void visitBinaryOpBegin(BinaryOp op);
 	public void visitBinaryOpMid(BinaryOp op);
 	public void visitBinaryOpEnd(BinaryOp op);
 	public void visitBlockStart(Block block);

@@ -37,71 +37,34 @@ public class CombinerOptimizer implements BytecodeOptimizer {
 	public CombinerOptimizer() {
 		patterns.add(new BasicPattern(Bytecode.RETURN, Bytecode.RETURN, BasicPattern.Type.REMOVE_SECOND));
 		
-		patterns.add(new BasicPattern(Bytecode.LOAD, Bytecode.POP, BasicPattern.Type.REMOVE_BOTH));
-		patterns.add(new BasicPattern(Bytecode.LOAD, Bytecode.POP2, Bytecode.POP));
-		patterns.add(new BasicPattern(Bytecode.LOAD, Bytecode.POP3, Bytecode.POP2));
-		patterns.add(new BasicPattern(Bytecode.LOAD2, Bytecode.POP2, BasicPattern.Type.REMOVE_BOTH));
-		patterns.add(new BasicPattern(Bytecode.LOAD3, Bytecode.POP3, BasicPattern.Type.REMOVE_BOTH));
-		patterns.add(new BasicPattern(Bytecode.LOAD4, Bytecode.POP4, BasicPattern.Type.REMOVE_BOTH));
-		patterns.add(new BasicPattern(Bytecode.LOAD2, Bytecode.POP, Bytecode.LOAD));
-		patterns.add(new BasicPattern(Bytecode.LOAD3, Bytecode.POP, Bytecode.LOAD2));
-		patterns.add(new BasicPattern(Bytecode.LOAD3, Bytecode.POP2, Bytecode.LOAD));
-		patterns.add(new BasicPattern(Bytecode.LOAD4, Bytecode.POP, Bytecode.LOAD3));
-		patterns.add(new BasicPattern(Bytecode.LOAD4, Bytecode.POP2, Bytecode.LOAD2));
-		patterns.add(new BasicPattern(Bytecode.LOAD4, Bytecode.POP3, Bytecode.LOAD));
-
-		patterns.add(new BasicPattern(Bytecode.LDC, Bytecode.POP, BasicPattern.Type.REMOVE_BOTH));
-		patterns.add(new BasicPattern(Bytecode.LDC, Bytecode.POP2, Bytecode.POP));
-		patterns.add(new BasicPattern(Bytecode.LDC, Bytecode.POP3, Bytecode.POP2));
-		patterns.add(new BasicPattern(Bytecode.LDC, Bytecode.POP4, Bytecode.POP3));
-		patterns.add(new BasicPattern(Bytecode.LDC2, Bytecode.POP2, BasicPattern.Type.REMOVE_BOTH));
-		patterns.add(new BasicPattern(Bytecode.LDC3, Bytecode.POP3, BasicPattern.Type.REMOVE_BOTH));
-		patterns.add(new BasicPattern(Bytecode.LDC4, Bytecode.POP4, BasicPattern.Type.REMOVE_BOTH));
-		patterns.add(new BasicPattern(Bytecode.LDC2, Bytecode.POP, Bytecode.LDC));
-		patterns.add(new BasicPattern(Bytecode.LDC3, Bytecode.POP, Bytecode.LDC2));
-		patterns.add(new BasicPattern(Bytecode.LDC3, Bytecode.POP2, Bytecode.LDC));
-		patterns.add(new BasicPattern(Bytecode.LDC4, Bytecode.POP, Bytecode.LDC3));
-		patterns.add(new BasicPattern(Bytecode.LDC4, Bytecode.POP2, Bytecode.LDC2));
-		patterns.add(new BasicPattern(Bytecode.LDC4, Bytecode.POP3, Bytecode.LDC));
-		
 		patterns.add(new BasicPattern(Bytecode.MUL, Bytecode.ADD, Bytecode.MAD));
 		patterns.add(new BasicPattern(Bytecode.MUL2, Bytecode.ADD2, Bytecode.MAD2));
 		patterns.add(new BasicPattern(Bytecode.MUL3, Bytecode.ADD3, Bytecode.MAD3));
 		patterns.add(new BasicPattern(Bytecode.MUL4, Bytecode.ADD4, Bytecode.MAD4));
-		
-		patterns.add(new BasicPattern(Bytecode.DUP, Bytecode.POP, BasicPattern.Type.REMOVE_BOTH));
-		patterns.add(new BasicPattern(Bytecode.DUP2, Bytecode.POP2, BasicPattern.Type.REMOVE_BOTH));
-		patterns.add(new BasicPattern(Bytecode.DUP3, Bytecode.POP3, BasicPattern.Type.REMOVE_BOTH));
-		
-		patterns.add(new BasicPattern(Bytecode.DUPS, Bytecode.POP, BasicPattern.Type.REMOVE_BOTH));
-		patterns.add(new BasicPattern(Bytecode.DUPS2, Bytecode.POP2, BasicPattern.Type.REMOVE_BOTH));
-		patterns.add(new BasicPattern(Bytecode.DUPS3, Bytecode.POP3, BasicPattern.Type.REMOVE_BOTH));
 
 		patterns.add(new BasicPattern(Bytecode.DUPS2, Bytecode.POP, Bytecode.DUPS));
 		patterns.add(new BasicPattern(Bytecode.DUPS3, Bytecode.POP, Bytecode.DUPS2));
 		patterns.add(new BasicPattern(Bytecode.DUPS3, Bytecode.POP2, Bytecode.DUPS));
-
-		patterns.add(new BasicPattern(Bytecode.ADD, Bytecode.POP, Bytecode.POP2));
-		patterns.add(new BasicPattern(Bytecode.ADD, Bytecode.POP2, Bytecode.POP3));
-		patterns.add(new BasicPattern(Bytecode.SUB, Bytecode.POP, Bytecode.POP2));
-		patterns.add(new BasicPattern(Bytecode.SUB, Bytecode.POP2, Bytecode.POP3));
-		patterns.add(new BasicPattern(Bytecode.MUL, Bytecode.POP, Bytecode.POP2));
-		patterns.add(new BasicPattern(Bytecode.MUL, Bytecode.POP2, Bytecode.POP3));
-		patterns.add(new BasicPattern(Bytecode.DIV, Bytecode.POP, Bytecode.POP2));
-		patterns.add(new BasicPattern(Bytecode.DIV, Bytecode.POP2, Bytecode.POP3));
-		patterns.add(new BasicPattern(Bytecode.MAD, Bytecode.POP, Bytecode.POP3));
-		patterns.add(new BasicPattern(Bytecode.MAD, Bytecode.POP2, Bytecode.POP4));
-		patterns.add(new BasicPattern(Bytecode.MOD, Bytecode.POP, Bytecode.POP2));
-		patterns.add(new BasicPattern(Bytecode.MOD, Bytecode.POP2, Bytecode.POP3));
-		patterns.add(new BasicPattern(Bytecode.ATAN, Bytecode.POP, Bytecode.POP2));
-		patterns.add(new BasicPattern(Bytecode.ATAN, Bytecode.POP2, Bytecode.POP3));
-		patterns.add(new BasicPattern(Bytecode.STEP, Bytecode.POP, Bytecode.POP2));
-		patterns.add(new BasicPattern(Bytecode.STEP, Bytecode.POP2, Bytecode.POP3));
 		
-		patterns.add(new BasicPattern(Bytecode.COS, Bytecode.POP, BasicPattern.Type.REMOVE_BOTH));
-		patterns.add(new BasicPattern(Bytecode.COS, Bytecode.POP2, Bytecode.POP2));
-		patterns.add(new BasicPattern(Bytecode.SIN, Bytecode.POP, BasicPattern.Type.REMOVE_BOTH));
-		patterns.add(new BasicPattern(Bytecode.SIN, Bytecode.POP2, Bytecode.POP2));
+		patterns.add(new BasicPattern(Bytecode.DUPS, Bytecode.POP, BasicPattern.Type.REMOVE_BOTH));
+		patterns.add(new BasicPattern(Bytecode.DUPS2, Bytecode.POP2, BasicPattern.Type.REMOVE_BOTH));
+		patterns.add(new BasicPattern(Bytecode.DUPS3, Bytecode.POP3, BasicPattern.Type.REMOVE_BOTH));
+		
+		patterns.add(new BasicPattern(Bytecode.DUP, Bytecode.POP, BasicPattern.Type.REMOVE_BOTH));
+		patterns.add(new BasicPattern(Bytecode.DUP2, Bytecode.POP2, BasicPattern.Type.REMOVE_BOTH));
+		patterns.add(new BasicPattern(Bytecode.DUP3, Bytecode.POP3, BasicPattern.Type.REMOVE_BOTH));
+
+		patterns.add(new BasicPattern(Bytecode.DUPS, Bytecode.MUL2, Bytecode.MULS2));
+		patterns.add(new BasicPattern(Bytecode.DUPS2, Bytecode.MUL3, Bytecode.MULS3));
+		patterns.add(new BasicPattern(Bytecode.DUPS3, Bytecode.MUL4, Bytecode.MULS4));
+		
+		patterns.add(new BasicPattern(Bytecode.DUPS, Bytecode.MIX2, Bytecode.MIXS2));
+		patterns.add(new BasicPattern(Bytecode.DUPS2, Bytecode.MIX3, Bytecode.MIXS3));
+		patterns.add(new BasicPattern(Bytecode.DUPS3, Bytecode.MIX4, Bytecode.MIXS4));
+	}
+	
+	private Bytecode getBytecode(String name, int size) {
+		return Bytecode.valueOf(name + (size > 1 ? ""+size : ""));
 	}
 	
 	@Override
@@ -137,7 +100,35 @@ public class CombinerOptimizer implements BytecodeOptimizer {
 					}
 					continue instrLoop;
 				}
-										
+							
+			// Remove popped instructions
+			if (cur.bytecode.name().startsWith("POP") && last.bytecode.stackOut > 0) {
+				int popWidth = cur.bytecode.getWidth();
+				int instrOut = last.bytecode.stackOut;
+				int instrDiff = last.bytecode.stackIn - instrOut;
+				
+				if (popWidth >= instrOut) {
+					int newPopSize = popWidth + instrDiff;
+					
+					if (newPopSize > 0) {
+						last.bytecode = getBytecode("POP", Math.min(newPopSize, 4));
+						last.type = Instruction.Type.NONE;
+					
+						if (newPopSize > 4)
+							cur.bytecode = getBytecode("POP", (newPopSize-4));
+						else
+							instrs.remove(i);
+					}
+					else {
+						instrs.remove(i);
+						instrs.remove(i-1);
+						i--;
+					}
+					
+					continue;
+				}
+			}
+			
 			if (last.bytecode == Bytecode.LOAD && cur.bytecode == Bytecode.LOAD && last.valueInt == cur.valueInt - 1) {
 				last.bytecode = Bytecode.LOAD2;
 				instrs.remove(i);

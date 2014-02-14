@@ -114,8 +114,9 @@ public class BlockOptimizer implements BytecodeOptimizer {
 					block.endStoreSize = instr.bytecode.getWidth();
 					block.endStoreSlot = instr.valueInt;
 				} else {
+					block.endStoreSize = -1;
+					block.endStoreSlot = -1;
 					System.out.println("Block doesn't end with a store at " + i + ": " + instr);
-					return false;
 				}
 								
 				blocks.add(block);
@@ -167,6 +168,17 @@ public class BlockOptimizer implements BytecodeOptimizer {
 		// Debug print
 		System.out.println("#### Before ####");
 		for (Block block : blocks) block.printDebug();
+		
+		// Can we maybe delete blocks?
+		System.out.println("#### Delete ####");
+		for (int i = 0; i < blocks.size(); i++) {
+			Block block = blocks.get(i);
+			if (!block.barrier && block.slotStores.isEmpty()) {
+				System.out.println("$ Delete block");
+				blocks.remove(i);
+				i--;
+			}
+		}
 		
 		// Shift blocks down
 		System.out.println("#### Shift ####");

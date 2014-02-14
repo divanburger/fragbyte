@@ -83,6 +83,8 @@ struct Program {
 				instructions.push_back({Bytecode::SQRT});
 			else if (tokens[0] == "RCP")
 				instructions.push_back({Bytecode::RCP});
+			else if (tokens[0] == "EXP")
+				instructions.push_back({Bytecode::EXP});
 			else if (tokens[0] == "ADD")
 				instructions.push_back({Bytecode::ADD});
 			else if (tokens[0] == "ADD2")
@@ -107,6 +109,12 @@ struct Program {
 				instructions.push_back({Bytecode::MUL3});
 			else if (tokens[0] == "MUL4")
 				instructions.push_back({Bytecode::MUL4});
+			else if (tokens[0] == "MULS2")
+				instructions.push_back({Bytecode::MULS2});
+			else if (tokens[0] == "MULS3")
+				instructions.push_back({Bytecode::MULS3});
+			else if (tokens[0] == "MULS4")
+				instructions.push_back({Bytecode::MULS4});
 			else if (tokens[0] == "DIV")
 				instructions.push_back({Bytecode::DIV});
 			else if (tokens[0] == "DIV2")
@@ -163,6 +171,12 @@ struct Program {
 				instructions.push_back({Bytecode::MIX3});
 			else if (tokens[0] == "MIX4")
 				instructions.push_back({Bytecode::MIX4});
+			else if (tokens[0] == "MIXS2")
+				instructions.push_back({Bytecode::MIXS2});
+			else if (tokens[0] == "MIXS3")
+				instructions.push_back({Bytecode::MIXS3});
+			else if (tokens[0] == "MIXS4")
+				instructions.push_back({Bytecode::MIXS4});
 			else if (tokens[0] == "CLAMP")
 				instructions.push_back({Bytecode::CLAMP});
 			else if (tokens[0] == "CLAMP2")
