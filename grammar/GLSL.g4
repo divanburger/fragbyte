@@ -103,19 +103,24 @@ uniformDeclaration returns [Variable var]:
 	;
 	
 varDeclaration returns [Variable var] :
-	{boolean constant = false;}
+	{boolean constant = false, assigned = false;}
 	('const' {constant = true;})? 
-	type ID
+	type identifier=ID
 	{
-		$var = variables.add($ID.text, $type.t, constant);
+		$var = variables.add($identifier.text, $type.t, constant);
 	}
 	(
 		'=' expression
 		{
+			assigned = true;
+
 			Assignment assignment = new Assignment(new VariableStore($var), $expression.value);
 			scope.add(assignment);
 		}
 	) ';'
+	{
+		if (constant && !assigned) log.error($identifier, "Constant variables must be assigned an initial value");
+	}
 	;
 	
 returnStatement: 
@@ -152,7 +157,10 @@ assignment:
 	ID
 	{
 		Variable var = variables.get($ID.text);
-		if (var == null) log.error($ID, "Variable '" + $ID.text + "' does not exist");
+		if (var == null) 
+			log.error($ID, "Variable '" + $ID.text + "' does not exist");
+		else if (var.constant)
+			log.error($ID, "Can not assign to a constant variable");
 	}
 	SWIZZLE? OP=('='|'+='|'-='|'*='|'/=')
 	expression ';'

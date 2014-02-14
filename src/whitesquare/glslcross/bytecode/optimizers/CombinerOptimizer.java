@@ -53,6 +53,15 @@ public class CombinerOptimizer implements BytecodeOptimizer {
 		patterns.add(new BasicPattern(Bytecode.DUP, Bytecode.POP, BasicPattern.Type.REMOVE_BOTH));
 		patterns.add(new BasicPattern(Bytecode.DUP2, Bytecode.POP2, BasicPattern.Type.REMOVE_BOTH));
 		patterns.add(new BasicPattern(Bytecode.DUP3, Bytecode.POP3, BasicPattern.Type.REMOVE_BOTH));
+		
+		patterns.add(new BasicPattern(Bytecode.DUPS, Bytecode.DUPS, Bytecode.DUPS2));
+		patterns.add(new BasicPattern(Bytecode.DUPS, Bytecode.DUP, Bytecode.DUPS2));
+		patterns.add(new BasicPattern(Bytecode.DUP, Bytecode.DUPS, Bytecode.DUPS2));
+		patterns.add(new BasicPattern(Bytecode.DUP, Bytecode.DUP, Bytecode.DUPS2));
+		patterns.add(new BasicPattern(Bytecode.DUPS2, Bytecode.DUP, Bytecode.DUPS3));
+		patterns.add(new BasicPattern(Bytecode.DUPS2, Bytecode.DUPS, Bytecode.DUPS3));
+		patterns.add(new BasicPattern(Bytecode.DUP, Bytecode.DUPS2, Bytecode.DUPS3));
+		patterns.add(new BasicPattern(Bytecode.DUPS, Bytecode.DUPS2, Bytecode.DUPS3));
 
 		patterns.add(new BasicPattern(Bytecode.DUPS, Bytecode.MUL2, Bytecode.MULS2));
 		patterns.add(new BasicPattern(Bytecode.DUPS2, Bytecode.MUL3, Bytecode.MULS3));
@@ -61,6 +70,8 @@ public class CombinerOptimizer implements BytecodeOptimizer {
 		patterns.add(new BasicPattern(Bytecode.DUPS, Bytecode.MIX2, Bytecode.MIXS2));
 		patterns.add(new BasicPattern(Bytecode.DUPS2, Bytecode.MIX3, Bytecode.MIXS3));
 		patterns.add(new BasicPattern(Bytecode.DUPS3, Bytecode.MIX4, Bytecode.MIXS4));
+		
+		patterns.add(new BasicPattern(Bytecode.NEG, Bytecode.COS, Bytecode.COS));
 	}
 	
 	private Bytecode getBytecode(String name, int size) {

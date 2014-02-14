@@ -11,6 +11,7 @@ import whitesquare.glslcross.ast.Unit;
 import whitesquare.glslcross.ast.Variable;
 import whitesquare.glslcross.ast.optimizers.ASTOptimizer;
 import whitesquare.glslcross.ast.optimizers.ConstantFoldingOptimizer;
+import whitesquare.glslcross.ast.optimizers.ConstantVariableInliner;
 import whitesquare.glslcross.ast.optimizers.OrderOptimizer;
 import whitesquare.glslcross.bytecode.Program;
 import whitesquare.glslcross.bytecode.analyzer.StackAnalyzer;
@@ -34,6 +35,7 @@ public class GLSLCompiler {
 		ArrayList<ASTOptimizer> astOptimizers = new ArrayList<ASTOptimizer>();
 		
 		astOptimizers.add(new OrderOptimizer());
+		astOptimizers.add(new ConstantVariableInliner());
 		astOptimizers.add(new ConstantFoldingOptimizer(ast.getType("int"), ast.getType("float")));
 		
 		ASTOptimizer orderOptimizer = new OrderOptimizer();
@@ -90,7 +92,11 @@ public class GLSLCompiler {
 			parser.setLog(log);
 			parser.glsl();
 			Unit unit = parser.getUnit();
-						
+			
+			if (log.errors > 0) {
+				System.out.println("Errors were found");
+				return;
+			}
 			Variables variables = parser.getVariables();
 			Variable tempVar = variables.add("__tempf", unit.getType("vec4"), false);
 			

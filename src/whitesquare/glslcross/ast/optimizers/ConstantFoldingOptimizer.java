@@ -19,7 +19,6 @@ import whitesquare.glslcross.ast.Unit;
 import whitesquare.glslcross.ast.Value;
 import whitesquare.glslcross.ast.VariableLoad;
 import whitesquare.glslcross.ast.VariableStore;
-import whitesquare.glslcross.bytecode.Instruction;
 
 public class ConstantFoldingOptimizer implements ASTOptimizer, ASTVisitor {
 

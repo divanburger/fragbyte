@@ -190,7 +190,7 @@ public class BytecodeVisitor implements ASTVisitor {
 	}
 
 	@Override
-	public void visitVariableLoad(VariableLoad value) {
+	public void visitVariableLoad(VariableLoad value) {		
 		if (value.swizzle == null)
 			writer.load(value.variable);
 		else
