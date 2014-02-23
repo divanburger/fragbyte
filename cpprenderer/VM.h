@@ -1260,8 +1260,8 @@ struct VM {
 				for (int i = 0; i < instances; i++)
 				{
 					int st = i+sp*instances;
-					float a = stack[st-4*instances]*stack[st-3*instances];
-					float b = stack[st-2*instances]*stack[st-1*instances];
+					float a = stack[st-4*instances]*stack[st-2*instances];
+					float b = stack[st-3*instances]*stack[st-1*instances];
 					stack[st-4*instances] = a+b;
 				}
 				sp -= 3;
@@ -1273,9 +1273,9 @@ struct VM {
 				for (int i = 0; i < instances; i++)
 				{
 					int st = i+sp*instances;
-					float a = stack[st-6*instances]*stack[st-5*instances];
-					float b = stack[st-4*instances]*stack[st-3*instances];
-					float c = stack[st-2*instances]*stack[st-1*instances];
+					float a = stack[st-6*instances]*stack[st-3*instances];
+					float b = stack[st-5*instances]*stack[st-2*instances];
+					float c = stack[st-4*instances]*stack[st-1*instances];
 					stack[st-6*instances] = a+b+c;
 				}
 				sp -= 5;

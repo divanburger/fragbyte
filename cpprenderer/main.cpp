@@ -36,7 +36,7 @@ int main(int argc, char const *argv[]) {
 		{
 			int i = x+y*width;
 			vm.setValue(4, i, x);
-			vm.setValue(5, i, y);
+			vm.setValue(5, i, height-y-1);
 			vm.setValue(6, i, width);
 			vm.setValue(7, i, height);
 		}
