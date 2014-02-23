@@ -25,7 +25,7 @@ import whitesquare.glslcross.glslcompiler.GLSLLexer;
 import whitesquare.glslcross.glslcompiler.GLSLParser;
 
 public class GLSLCompiler {
-	public String prefix = "tests/test7"; 
+	public String prefix = "tests/test2"; 
 	
 	public GLSLCompiler() {
 		parse(prefix + ".glsl");
@@ -56,7 +56,7 @@ public class GLSLCompiler {
 		
 		bytecodeOptimizers.add(new StoreLoadOptimizer());
 		bytecodeOptimizers.add(new UnusedSlotOptimizer());
-		//bytecodeOptimizers.add(new StackOptimizer());
+		bytecodeOptimizers.add(new StackOptimizer());
 		bytecodeOptimizers.add(new CombinerOptimizer());
 		bytecodeOptimizers.add(new BlockOptimizer());
 		

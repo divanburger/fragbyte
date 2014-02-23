@@ -10,8 +10,8 @@ import whitesquare.glslcross.bytecode.Program;
 
 public class StackOptimizer implements BytecodeOptimizer {
 
-	private int[] stackInstr = new int[32];
-	private int[] stackPos = new int[32];
+	private int[] stackInstr = new int[256];
+	private int[] stackPos = new int[256];
 	private int[] instrStackSize;
 		
 	@Override
@@ -53,6 +53,10 @@ public class StackOptimizer implements BytecodeOptimizer {
 				}
 				
 				sp -= stackIn;
+				if (sp < 0) {
+					System.out.println("Invalid stack state, stack has too few values for the instruction");
+					return false;
+				}
 				
 				System.out.println(i + ": " + instr);
 				
@@ -78,8 +82,7 @@ public class StackOptimizer implements BytecodeOptimizer {
 						changed = true;
 						break;
 					}
-				} 
-				else if (instr.bytecode == Bytecode.POP2) {
+				} else if (instr.bytecode == Bytecode.POP2) {
 					int k = stackInstr[sp];
 					Instruction popped = instrs.get(k);
 					
@@ -90,8 +93,7 @@ public class StackOptimizer implements BytecodeOptimizer {
 						changed = true;
 						break;
 					}
-				}
-				else if (instr.bytecode == Bytecode.POP3) {
+				} else if (instr.bytecode == Bytecode.POP3) {
 					int k = stackInstr[sp];
 					Instruction popped = instrs.get(k);
 					
@@ -113,8 +115,7 @@ public class StackOptimizer implements BytecodeOptimizer {
 						changed = true;
 						break;
 					}
-				}
-				else if (instr.bytecode == Bytecode.DUP || instr.bytecode == Bytecode.DUPS) {
+				} else if (instr.bytecode == Bytecode.DUP || instr.bytecode == Bytecode.DUPS) {
 					int k = stackInstr[sp];
 					Instruction dupped = instrs.get(k);
 					
@@ -156,42 +157,6 @@ public class StackOptimizer implements BytecodeOptimizer {
 						changed = true;
 						break;
 					}
-				} else if (instr.bytecode == Bytecode.MUL) {
-					boolean allConst = true;
-					
-					for (int j = 0; j < 2; j++) {
-						int kj = stackInstr[sp+j];
-						Instruction instrDep = instrs.get(kj);
-						if (!instrDep.bytecode.name().startsWith("LDC"))
-							allConst = false;
-					}
-					
-					if (allConst) {
-						int a = stackInstr[sp];
-						int b = stackInstr[sp+1];
-						
-						instr.bytecode = Bytecode.LDC;
-						instr.type = Instruction.Type.FLOAT;
-						instr.valueFloat = instrs.get(a).valueFloat * instrs.get(b).valueFloat;
-						
-						instrs.remove(b);
-						if (a != b) instrs.remove(a);
-						
-						changed = true;
-						break;
-					}
-					
-					// Move constant loads to the right hand side of a multiply
-					int k = stackInstr[sp];
-					Instruction leftSide = instrs.get(k);
-					Instruction prev = instrs.get(i-1);
-					
-					if (leftSide.bytecode == Bytecode.LDC && prev.bytecode != Bytecode.LDC) {
-						instrs.add(i, leftSide);
-						instrs.remove(k);
-						changed = true;
-						break;
-					}
 				} else if (instr.bytecode == Bytecode.DIV) {
 					int k = stackInstr[sp];
 					Instruction first = instrs.get(k);
@@ -199,30 +164,6 @@ public class StackOptimizer implements BytecodeOptimizer {
 					if (first.bytecode == Bytecode.LDC && first.valueFloat == 1.0) {
 						instr.bytecode = Bytecode.RCP;
 						instrs.remove(k);
-						changed = true;
-						break;
-					}
-					
-					boolean allConst = true;
-					
-					for (int j = 0; j < 2; j++) {
-						int kj = stackInstr[sp+j];
-						Instruction instrDep = instrs.get(kj);
-						if (!instrDep.bytecode.name().startsWith("LDC"))
-							allConst = false;
-					}
-					
-					if (allConst) {
-						int a = stackInstr[sp];
-						int b = stackInstr[sp+1];
-						
-						instr.bytecode = Bytecode.LDC;
-						instr.type = Instruction.Type.FLOAT;
-						instr.valueFloat = instrs.get(a).valueFloat / instrs.get(b).valueFloat;
-						
-						instrs.remove(b);
-						if (a != b) instrs.remove(a);
-						
 						changed = true;
 						break;
 					}
