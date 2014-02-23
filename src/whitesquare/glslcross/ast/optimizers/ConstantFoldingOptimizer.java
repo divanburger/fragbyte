@@ -44,7 +44,12 @@ public class ConstantFoldingOptimizer implements ASTOptimizer, ASTVisitor {
 			
 			System.out.println("Check Op: " + op.op + " ~ " + op.left + ", " + op.right);
 			
-			if (op.left.constant && op.left.type.size == 1 && op.right.constant && op.right.type.size == 1) {
+			if (op.op.equals("DIV") && op.right.constant && op.right.type.size == 1 && !op.right.type.integer) {
+				System.out.println("Inverted divide");
+				
+				op.right.floatValue = 1.0f / op.right.floatValue;
+				op.op = "MUL";
+			} else if (op.left.constant && op.left.type.size == 1 && op.right.constant && op.right.type.size == 1) {
 				double leftValue = op.left.type.integer ? op.left.intValue : op.left.floatValue;
 				double rightValue = op.right.type.integer ? op.right.intValue : op.right.floatValue;
 				boolean bothInteger = op.left.type.integer && op.right.type.integer;
