@@ -17,7 +17,13 @@ public class Function extends Scope {
 		this.inputSize = inputSize;
 		this.outputSize = returnType.size;
 	}
-
+	
+	@Override
+	public void print(String indent) {
+		System.out.println(indent + "[func] " + name);
+		for (Node node : nodes) node.print(indent + "\t");
+	}
+	
 	@Override
 	public void visit(ASTVisitor visitor) {
 		visitor.visitFunctionBegin(this);

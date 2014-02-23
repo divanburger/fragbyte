@@ -27,6 +27,12 @@ public class Construction extends Value {
 		arguments.add(first);
 		arguments.add(second);
 	}
+	
+	@Override
+	public void print(String indent) {
+		System.out.println(indent + type.toString());
+		for (Value arg : arguments) arg.print(indent + "\t");
+	}
 
 	@Override
 	public void visit(ASTVisitor visitor) {

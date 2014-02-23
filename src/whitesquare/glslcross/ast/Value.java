@@ -30,6 +30,11 @@ public class Value extends Node {
 	public boolean isCompatible(Value other) {
 		return type.isCompatible(other.type);
 	}
+	
+	@Override
+	public void print(String indent) {
+		System.out.println(indent + toString());
+	}
 
 	@Override
 	public void visit(ASTVisitor visitor) {
@@ -38,8 +43,8 @@ public class Value extends Node {
 	
 	@Override
 	public String toString() {
-		String str = "(";
+		String str = "";
 		if (constant) str += (type.integer ? intValue : floatValue) + " : ";
-		return str + type.toString() + ")";
+		return str + type.toString();
 	}
 }

@@ -22,6 +22,11 @@ public class Variable extends Value {
 	}
 	
 	@Override
+	public void print(String indent) {
+		System.out.println(indent + "[var] " + name);
+	}
+	
+	@Override
 	public String toString() {
 		String str = "<" + name + " : " + type.toString();
 		if (constant) str += " const";

@@ -45,7 +45,7 @@ glsl:
 		tVoid = unit.addType("void", 0, true);
 		tError = unit.addType("_ERROR_", 0, true);
 		
-		typeHelper = new TypeHelper(log, tError);
+		typeHelper = new TypeHelper(log, tError, tInt, tFloat);
 			
 		scope.pushScope(unit);
 		
@@ -82,7 +82,7 @@ function:
 	;
 
 parameter returns [Variable var]: 
-	type ID {$var = variables.add($ID.text, $type.t, false);}
+	('in' | 'out' | 'inout')? type ID {$var = variables.add($ID.text, $type.t, false);}
 	;
 
 block: '{' statement* '}';
@@ -117,7 +117,7 @@ varDeclaration returns [Variable var] :
 			Assignment assignment = new Assignment(new VariableStore($var), $expression.value);
 			scope.add(assignment);
 		}
-	) ';'
+	)? ';'
 	{
 		if (constant && !assigned) log.error($identifier, "Constant variables must be assigned an initial value");
 	}
@@ -267,6 +267,9 @@ construction returns [Value value]:
 builtInCall returns [Value value]:
 	FUN='sin' '(' a=expression ')' {$value = typeHelper.writeUnaryOp($FUN, "SIN", $a.value);}
 	| FUN='cos' '(' a=expression ')' {$value = typeHelper.writeUnaryOp($FUN, "COS", $a.value);}
+	| FUN='fract' '(' a=expression ')' {$value = typeHelper.writeUnaryOp($FUN, "FRACT", $a.value);}
+	| FUN='floor' '(' a=expression ')' {$value = typeHelper.writeUnaryOp($FUN, "FLOOR", $a.value);}
+	| FUN='ceil' '(' a=expression ')' {$value = typeHelper.writeUnaryOp($FUN, "CEIL", $a.value);}
 	| FUN='sqrt' '(' a=expression ')' {$value = typeHelper.writeUnaryOp($FUN, "SQRT", $a.value);}
 	| FUN='abs' '(' a=expression ')' {$value = typeHelper.writeUnaryOp($FUN, "ABS", $a.value);}
 	| FUN='exp' '(' a=expression ')' {$value = typeHelper.writeUnaryOp($FUN, "EXP", $a.value);}
@@ -290,7 +293,8 @@ builtInCall returns [Value value]:
 	| FUN='step' '(' a=expression ',' b=expression ')' {$value = typeHelper.writeBinaryOp($FUN, "STEP", $a.value, $b.value);}
 	| FUN='length' '(' a=expression ')' {$value = typeHelper.writeUnaryOp($FUN, "LEN", tFloat, $a.value);}
 	| FUN='normalize' '(' a=expression ')' {$value = typeHelper.writeUnaryOp($FUN, "NORM", $a.value);}
-	| FUN='dot' '(' a=expression ',' b=expression ')' {$value = typeHelper.writeUnaryOp($FUN, "DP", $a.value);}
+	| FUN='cross' '(' a=expression ',' b=expression ')' {$value = typeHelper.writeBinaryOp($FUN, "CROSS", $a.value, $b.value);}
+	| FUN='dot' '(' a=expression ',' b=expression ')' {$value = typeHelper.writeBinaryOp($FUN, "DP", $a.value, $b.value);}
 	;
 
 functionCall returns [Value value]:

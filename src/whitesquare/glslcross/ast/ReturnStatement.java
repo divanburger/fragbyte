@@ -8,6 +8,12 @@ public class ReturnStatement extends Statement {
 	}
 	
 	@Override
+	public void print(String indent) {
+		System.out.println(indent + "[return]");
+		value.print(indent + "\t");
+	}
+	
+	@Override
 	public void visit(ASTVisitor visitor) {
 		value.visit(visitor);
 		visitor.visitReturnStatement(this);

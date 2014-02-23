@@ -43,13 +43,17 @@ public class Swizzle {
 		return new Type(size, inType.integer);
 	}
 	
-	@Override
-	public String toString() {
-		String str = ".";
+	public String getSwizzleString() {
+		String str = "";
 		for (int i = 0; i < size; i++) {
 			int index = indices[i];
 			str += (index == 0 ? "x" : (index == 1 ? "y" : (index == 2 ? "z" : "w")));
 		}
 		return str;
+	}
+	
+	@Override
+	public String toString() {
+		return "." + getSwizzleString();
 	}
 }

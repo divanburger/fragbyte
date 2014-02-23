@@ -11,6 +11,12 @@ public class Unit extends Scope {
 	private Map<String, Type> types = new HashMap<String, Type>();
 	
 	@Override
+	public void print(String indent) {
+		System.out.println(indent + "[unit]");
+		for (Node node : nodes) node.print(indent + "\t");
+	}
+	
+	@Override
 	public void visit(ASTVisitor visitor) {
 		visitor.visitUnitStart(this);
 		for (Node node : nodes) node.visit(visitor);

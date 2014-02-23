@@ -25,7 +25,7 @@ import whitesquare.glslcross.glslcompiler.GLSLLexer;
 import whitesquare.glslcross.glslcompiler.GLSLParser;
 
 public class GLSLCompiler {
-	public String prefix = "tests/test2"; 
+	public String prefix = "tests/test8"; 
 	
 	public GLSLCompiler() {
 		parse(prefix + ".glsl");
@@ -100,7 +100,9 @@ public class GLSLCompiler {
 			Variables variables = parser.getVariables();
 			Variable tempVar = variables.add("__tempf", unit.getType("vec4"), false);
 			
-			optimizeAST(unit);
+			unit.print(">");
+			
+			//optimizeAST(unit);
 			
 			BytecodeWriter bytecodeWriter = new BytecodeWriter();
 			BytecodeVisitor visitor = new BytecodeVisitor(bytecodeWriter, log, tempVar);

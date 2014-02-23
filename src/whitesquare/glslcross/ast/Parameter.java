@@ -11,4 +11,8 @@ public class Parameter extends Node {
 	public void visit(ASTVisitor visitor) {
 		visitor.visitParameter(this);
 	}
+
+	@Override
+	public void print(String indent) {		
+	}
 }

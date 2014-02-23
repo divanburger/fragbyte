@@ -11,6 +11,13 @@ public class BinaryOp extends Value {
 		this.left = left;
 		this.right = right;
 	}
+	
+	@Override
+	public void print(String indent) {
+		System.out.println(indent + op);
+		left.print(indent + "\t");
+		right.print(indent + "\t");
+	}
 
 	@Override
 	public void visit(ASTVisitor visitor) {

@@ -8,6 +8,12 @@ public class Assignment extends Statement {
 		this.dest = dest;
 		this.value = value;
 	}
+	
+	@Override
+	public void print(String indent) {
+		System.out.println(indent + "[assign] " + dest.toString());
+		value.print(indent + "\t");
+	}
 
 	@Override
 	public void visit(ASTVisitor visitor) {

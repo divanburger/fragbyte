@@ -85,6 +85,30 @@ struct Program {
 				instructions.push_back({Bytecode::RCP});
 			else if (tokens[0] == "EXP")
 				instructions.push_back({Bytecode::EXP});
+			else if (tokens[0] == "FLOOR")
+				instructions.push_back({Bytecode::FLOOR});
+			else if (tokens[0] == "FLOOR2")
+				instructions.push_back({Bytecode::FLOOR2});
+			else if (tokens[0] == "FLOOR3")
+				instructions.push_back({Bytecode::FLOOR3});
+			else if (tokens[0] == "FLOOR4")
+				instructions.push_back({Bytecode::FLOOR4});
+			else if (tokens[0] == "CEIL")
+				instructions.push_back({Bytecode::CEIL});
+			else if (tokens[0] == "CEIL2")
+				instructions.push_back({Bytecode::CEIL2});
+			else if (tokens[0] == "CEIL3")
+				instructions.push_back({Bytecode::CEIL3});
+			else if (tokens[0] == "CEIL4")
+				instructions.push_back({Bytecode::CEIL4});
+			else if (tokens[0] == "FRACT")
+				instructions.push_back({Bytecode::FRACT});
+			else if (tokens[0] == "FRACT2")
+				instructions.push_back({Bytecode::FRACT2});
+			else if (tokens[0] == "FRACT3")
+				instructions.push_back({Bytecode::FRACT3});
+			else if (tokens[0] == "FRACT4")
+				instructions.push_back({Bytecode::FRACT4});
 			else if (tokens[0] == "ADD")
 				instructions.push_back({Bytecode::ADD});
 			else if (tokens[0] == "ADD2")
@@ -231,6 +255,8 @@ struct Program {
 				instructions.push_back({Bytecode::DP3});
 			else if (tokens[0] == "NORM3")
 				instructions.push_back({Bytecode::NORM3});
+			else if (tokens[0] == "CROSS3")
+				instructions.push_back({Bytecode::CROSS3});
 			else if (tokens[0] == "LOAD" && tokens.size() == 2)
 				instructions.push_back({Bytecode::LOAD, to<int>(tokens[1])});
 			else if (tokens[0] == "LOAD2" && tokens.size() == 2)

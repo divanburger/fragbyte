@@ -9,6 +9,12 @@ public class UnaryOp extends Value {
 		this.op = op;
 		this.input = input;
 	}
+	
+	@Override
+	public void print(String indent) {
+		System.out.println(indent + op);
+		input.print(indent + "\t");
+	}
 
 	@Override
 	public void visit(ASTVisitor visitor) {

@@ -11,10 +11,14 @@ import whitesquare.glslcross.ast.Value;
 class TypeHelper {
 	private LogWriter log;
 	private Type errorType;
+	private Type intType;
+	private Type floatType;
 	
-	public TypeHelper(LogWriter log, Type errorType) {
+	public TypeHelper(LogWriter log, Type errorType, Type intType, Type floatType) {
 		this.log = log;
 		this.errorType = errorType;
+		this.intType = intType;
+		this.floatType = floatType;
 	}
 	
 	Value writeUnaryOp(Token token, String op, Type resultType, Value a) {
@@ -46,6 +50,13 @@ class TypeHelper {
 		}
 
 		if (a.type == errorType || b.type == errorType) return new Value(errorType); // Ignore already handled errors
+		
+		if (op.equals("DP")) {
+			if (a.type.size == b.type.size)
+				return new BinaryOp(a.type.integer ? intType : floatType, op, a, b);
+			else
+				return new Value(errorType);
+		}
 		
 		if (a.type.size == b.type.size || b.type.size == 1 || a.type.size == 1) 
 			return new BinaryOp(a.type.size >= b.type.size ? a.type : b.type, op, a, b);

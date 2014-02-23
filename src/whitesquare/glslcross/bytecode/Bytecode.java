@@ -22,6 +22,9 @@ public enum Bytecode {
 	SQRT(0, 1, 1),
 	RCP(0, 1, 1),
 	EXP(0, 1, 1),
+	FRACT(0, 1, 1), FRACT2(0, 2, 2), FRACT3(0, 3, 3), FRACT4(0, 4, 4),
+	FLOOR(0, 1, 1), FLOOR2(0, 2, 2), FLOOR3(0, 3, 3), FLOOR4(0, 4, 4),
+	CEIL(0, 1, 1), CEIL2(0, 2, 2), CEIL3(0, 3, 3), CEIL4(0, 4, 4),
 	LEN(0, 1, 1), LEN2(0, 2, 1), LEN3(0, 3, 1), LEN4(0, 4, 1),
 	ABS(0, 1, 1), ABS2(0, 2, 2), ABS3(0, 3, 3), ABS4(0, 4, 4),
 	MIN(0, 2, 1), MIN2(0, 4, 2), MIN3(0, 6, 3), MIN4(0, 8, 4),
@@ -34,6 +37,7 @@ public enum Bytecode {
 	SMOOTHSTEPR(0, 3, 1),
 	NORM(0, 1, 1), NORM3(0, 3, 3), NORM4(0, 4, 4), 
 	DP(0, 2, 1), DP2(0, 4, 1), DP3(0, 6, 1), DP4(0, 8, 1),
+	CROSS(0, 2, 1), CROSS3(0, 6, 3),
 	CALL(1), FUNC(), RETURN(),
 	REPEAT(1), ENDREPEAT(),
 	OUT(), IN(), SLOTS(1), STACK(1);

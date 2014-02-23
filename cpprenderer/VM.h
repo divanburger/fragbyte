@@ -15,6 +15,11 @@
 
 #include "Program.h"
 
+template <typename T>
+T fract(T value) {
+	return value - floor(value);
+}
+
 struct VM {
 	VM(Program& program, int instances) 
 		: program(program), instances(instances) {
@@ -301,6 +306,108 @@ struct VM {
 						int st = i+(sp-1)*groupSize;
 						stackA[st] = exp_poly_ps(stackA[st]);
 					}
+				}
+				break;
+			case Bytecode::FLOOR:
+				if (stackFlags[sp-1] == CONSTANT) {
+					stackConst[sp-1] = floor(stackConst[sp-1]);
+				} else {
+					for (int i = 0; i < instances; i++) {
+						int st = i+(sp-1)*instances;
+						stack[st] = floor(stack[st]);
+					}
+				}
+				break;
+			case Bytecode::FLOOR2:
+				fullLoadConstant(sp, 2);
+
+				for (int i = 0; i < instances*2; i++) {
+					int st = i+(sp-1)*instances;
+					stack[st] = floor(stack[st]);
+				}
+				break;
+			case Bytecode::FLOOR3:
+				fullLoadConstant(sp, 3);
+
+				for (int i = 0; i < instances*3; i++) {
+					int st = i+(sp-1)*instances;
+					stack[st] = floor(stack[st]);
+				}
+				break;
+			case Bytecode::FLOOR4:
+				fullLoadConstant(sp, 4);
+
+				for (int i = 0; i < instances*4; i++) {
+					int st = i+(sp-1)*instances;
+					stack[st] = floor(stack[st]);
+				}
+				break;
+			case Bytecode::CEIL:
+				if (stackFlags[sp-1] == CONSTANT) {
+					stackConst[sp-1] = ceil(stackConst[sp-1]);
+				} else {
+					for (int i = 0; i < instances; i++) {
+						int st = i+(sp-1)*instances;
+						stack[st] = ceil(stack[st]);
+					}
+				}
+				break;
+			case Bytecode::CEIL2:
+				fullLoadConstant(sp, 2);
+				
+				for (int i = 0; i < instances*2; i++) {
+					int st = i+(sp-1)*instances;
+					stack[st] = ceil(stack[st]);
+				}
+				break;
+			case Bytecode::CEIL3:
+				fullLoadConstant(sp, 3);
+				
+				for (int i = 0; i < instances*3; i++) {
+					int st = i+(sp-1)*instances;
+					stack[st] = ceil(stack[st]);
+				}
+				break;
+			case Bytecode::CEIL4:
+				fullLoadConstant(sp, 4);
+				
+				for (int i = 0; i < instances*4; i++) {
+					int st = i+(sp-1)*instances;
+					stack[st] = ceil(stack[st]);
+				}
+				break;
+			case Bytecode::FRACT:
+				if (stackFlags[sp-1] == CONSTANT) {
+					stackConst[sp-1] = fract(stackConst[sp-1]);
+				} else {
+					for (int i = 0; i < instances; i++) {
+						int st = i+(sp-1)*instances;
+						stack[st] = fract(stack[st]);
+					}
+				}
+				break;
+			case Bytecode::FRACT2:
+				fullLoadConstant(sp, 2);
+
+				for (int i = 0; i < instances*2; i++) {
+					int st = i+(sp-1)*instances;
+					stack[st] = fract(stack[st]);
+				}
+				break;
+			case Bytecode::FRACT3:
+				fullLoadConstant(sp, 3);
+
+				for (int i = 0; i < instances*3; i++) {
+					int st = i+(sp-1)*instances;
+					stack[st] = fract(stack[st]);
+				}
+				break;
+			case Bytecode::FRACT4:
+				fullLoadConstant(sp, 4);
+
+				for (int i = 0; i < instances*4; i++) {
+					int st = i+(sp-1)*instances;
+					stack[st] = fract(stack[st]);
 				}
 				break;
 			case Bytecode::SIN:
@@ -1172,6 +1279,21 @@ struct VM {
 					stack[st-6*instances] = a+b+c;
 				}
 				sp -= 5;
+				break;
+			case Bytecode::CROSS3:
+				fullLoadConstant(sp, 6);
+				
+				for (int i = 0; i < instances; i++)
+				{
+					int st = i+sp*instances;
+					float ax = stack[st-6*instances], bx = stack[st-3*instances];
+					float ay = stack[st-5*instances], by = stack[st-2*instances];
+					float az = stack[st-4*instances], bz = stack[st-1*instances];
+					stack[st-6*instances] = ay*bz - az*by;
+					stack[st-5*instances] = az*bx - ax*bz;
+					stack[st-4*instances] = ax*by - ay*bx;
+				}
+				sp -= 3;
 				break;
 			case Bytecode::NORM3:
 				//cout << "NORM3" << endl;

@@ -14,6 +14,12 @@ public class SwizzleValue extends Value {
 	public SwizzleValue(Value input, String swizzle) {
 		this(input, new Swizzle(input.type, swizzle));
 	}
+	
+	@Override
+	public void print(String indent) {
+		System.out.println(indent + "[swizzle] " + swizzle.getSwizzleString());
+		input.print(indent + "\t");
+	}
 
 	@Override
 	public void visit(ASTVisitor visitor) {

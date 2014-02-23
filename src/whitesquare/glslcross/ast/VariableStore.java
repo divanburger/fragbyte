@@ -14,6 +14,13 @@ public class VariableStore extends Value {
 		this.variable = variable;
 		this.swizzle = swizzle;
 	}
+	
+	@Override
+	public void print(String indent) {
+		System.out.print(indent + "[var] " + variable.name);
+		if (swizzle != null) System.out.println(" - " + swizzle.getSwizzleString());
+		System.out.println();
+	}
 
 	@Override
 	public void visit(ASTVisitor visitor) {

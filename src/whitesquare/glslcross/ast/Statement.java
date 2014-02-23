@@ -5,4 +5,8 @@ public class Statement extends Node {
 	public void visit(ASTVisitor visitor) {
 
 	}
+
+	@Override
+	public void print(String indent) {
+	}
 }
