@@ -4,8 +4,14 @@
 #include <stack>
 #include <cmath>
 #include <cstring>
+#include <memory>
 
 #include <sys/time.h>
+#include <emmintrin.h>
+#include <mmintrin.h>
+
+#include "sse_mathfun.h"
+#include "sse_mathpow.h"
 
 #include "Program.h"
 
@@ -16,8 +22,11 @@ struct VM {
 
 		stackFlags = (int*)calloc(program.maxStack, sizeof(int));
 		stackConst = (float*)calloc(program.maxStack, sizeof(float));
-		stack = (float*)calloc(instances * program.maxStack, sizeof(float));
-		slots = (float*)calloc(instances * program.maxSlots, sizeof(float));
+
+		int slotsSize = instances * program.maxSlots;
+		slots = (float*)calloc(slotsSize, sizeof(float));
+		int stackSize = instances * program.maxStack;
+		stack = (float*)calloc(stackSize, sizeof(float));
 
 		icount = (double*)calloc(program.instructions.size(), sizeof(double));
 		for (int i = 0; i < Bytecode::MAX_BYTECODE; i++) {
@@ -116,6 +125,11 @@ struct VM {
 			cout << slots[i*instances] << " ";
 		cout << endl;*/
 
+		// For SIMD
+		__m128* stackA = (__m128*)stack; 
+		size_t groupSize = (instances>>2);
+
+		// Execute
 		switch (instr.bytecode) {
 			case Bytecode::LDC:
 				stackFlags[sp] = CONSTANT;
@@ -273,10 +287,9 @@ struct VM {
 				if (stackFlags[sp-1] == CONSTANT) {
 					stackConst[sp-1] = 1.0f / stackConst[sp-1];
 				} else {
-					for (int i = 0; i < instances; i++)
-					{
-						int st = i+sp*instances;
-						stack[st-1*instances] = 1.0f / stack[st-1*instances];
+					for (int i = 0; i < groupSize; i++) {
+						int st = i+(sp-1)*groupSize;
+						stackA[st] = _mm_rcp_ps(stackA[st]);
 					}
 				}
 				break;
@@ -284,21 +297,19 @@ struct VM {
 				if (stackFlags[sp-1] == CONSTANT) {
 					stackConst[sp-1] = exp(stackConst[sp-1]);
 				} else {
-					for (int i = 0; i < instances; i++)
-					{
-						int st = i+sp*instances;
-						stack[st-1*instances] = exp(stack[st-1*instances]);
+					for (int i = 0; i < groupSize; i++) {
+						int st = i+(sp-1)*groupSize;
+						stackA[st] = exp_poly_ps(stackA[st]);
 					}
 				}
 				break;
 			case Bytecode::SIN:
-				//cout << "SIN" << endl;
 				fullLoadConstant(sp, 1);
 
-				for (int i = 0; i < instances; i++)
+				for (int i = 0; i < groupSize; i++)
 				{
-					int st = i+sp*instances;
-					stack[st-1*instances] = sin(stack[st-1*instances]);
+					int st = i+(sp-1)*groupSize;
+					stackA[st] = sin_ps(stackA[st]);
 				}
 				break;
 			case Bytecode::SIN2:
@@ -332,13 +343,12 @@ struct VM {
 				}
 				break;
 			case Bytecode::COS:
-				//cout << "COS" << endl;
 				fullLoadConstant(sp, 1);
-				
-				for (int i = 0; i < instances; i++)
+
+				for (int i = 0; i < groupSize; i++)
 				{
-					int st = i+sp*instances;
-					stack[st-1*instances] = cos(stack[st-1*instances]);
+					int st = i+(sp-1)*groupSize;
+					stackA[st] = cos_ps(stackA[st]);
 				}
 				break;
 			case Bytecode::COS2:
@@ -447,10 +457,9 @@ struct VM {
 				} else {
 					fullLoadConstant(sp, 2);
 					
-					for (int i = 0; i < instances; i++)
-					{
-						int st = i+sp*instances;
-						stack[st-2*instances] += stack[st-1*instances];
+					for (int i = 0; i < groupSize; i++) {
+						int st = i+(sp-1)*groupSize;
+						stackA[st-groupSize] = _mm_add_ps(stackA[st-groupSize], stackA[st]);
 					}
 				}
 				sp--;
@@ -458,22 +467,20 @@ struct VM {
 			case Bytecode::ADD2:
 				//cout << "ADD2" << endl;
 				fullLoadConstant(sp, 4);
-				
-				for (int i = 0; i < instances*2; i++)
-				{
-					int st = i+sp*instances;
-					stack[st-4*instances] += stack[st-2*instances];
+			
+				for (int i = 0; i < groupSize*2; i++) {
+					int st = i+(sp-2)*groupSize;
+					stackA[st-groupSize*2] = _mm_add_ps(stackA[st-groupSize*2], stackA[st]);
 				}
 				sp-=2;
 				break;
 			case Bytecode::ADD3:
 				//cout << "ADD3" << endl;
 				fullLoadConstant(sp, 6);
-				
-				for (int i = 0; i < instances*3; i++)
-				{
-					int st = i+sp*instances;
-					stack[st-6*instances] += stack[st-3*instances];
+			
+				for (int i = 0; i < groupSize*3; i++) {
+					int st = i+(sp-3)*groupSize;
+					stackA[st-groupSize*3] = _mm_add_ps(stackA[st-groupSize*3], stackA[st]);
 				}
 				sp-=3;
 				break;
@@ -481,10 +488,9 @@ struct VM {
 				//cout << "ADD4" << endl;
 				fullLoadConstant(sp, 8);
 				
-				for (int i = 0; i < instances*4; i++)
-				{
-					int st = i+sp*instances;
-					stack[st-8*instances] += stack[st-4*instances];
+				for (int i = 0; i < groupSize*4; i++) {
+					int st = i+(sp-4)*groupSize;
+					stackA[st-groupSize*4] = _mm_add_ps(stackA[st-groupSize*4], stackA[st]);
 				}
 				sp-=4;
 				break;
@@ -501,10 +507,9 @@ struct VM {
 				} else {
 					fullLoadConstant(sp, 2);
 					
-					for (int i = 0; i < instances; i++)
-					{
-						int st = i+sp*instances;
-						stack[st-2*instances] -= stack[st-1*instances];
+					for (int i = 0; i < groupSize; i++) {
+						int st = i+(sp-1)*groupSize;
+						stackA[st-groupSize] = _mm_sub_ps(stackA[st-groupSize], stackA[st]);
 					}
 				}
 				sp--;
@@ -513,10 +518,9 @@ struct VM {
 				//cout << "SUB2" << endl;
 				fullLoadConstant(sp, 4);
 				
-				for (int i = 0; i < instances*2; i++)
-				{
-					int st = i+sp*instances;
-					stack[st-4*instances] -= stack[st-2*instances];
+				for (int i = 0; i < groupSize*2; i++) {
+					int st = i+(sp-2)*groupSize;
+					stackA[st-groupSize*2] = _mm_sub_ps(stackA[st-groupSize*2], stackA[st]);
 				}
 				sp-=2;
 				break;
@@ -524,10 +528,9 @@ struct VM {
 				//cout << "SUB3" << endl;
 				fullLoadConstant(sp, 6);
 				
-				for (int i = 0; i < instances*3; i++)
-				{
-					int st = i+sp*instances;
-					stack[st-6*instances] -= stack[st-3*instances];
+				for (int i = 0; i < groupSize*3; i++) {
+					int st = i+(sp-3)*groupSize;
+					stackA[st-groupSize*3] = _mm_sub_ps(stackA[st-groupSize*3], stackA[st]);
 				}
 				sp-=3;
 				break;
@@ -535,10 +538,9 @@ struct VM {
 				//cout << "SUB4" << endl;
 				fullLoadConstant(sp, 8);
 				
-				for (int i = 0; i < instances*4; i++)
-				{
-					int st = i+sp*instances;
-					stack[st-8*instances] -= stack[st-4*instances];
+				for (int i = 0; i < groupSize*4; i++) {
+					int st = i+(sp-4)*groupSize;
+					stackA[st-groupSize*4] = _mm_sub_ps(stackA[st-groupSize*4], stackA[st]);
 				}
 				sp-=4;
 				break;
@@ -563,44 +565,37 @@ struct VM {
 				} else {
 					fullLoadConstant(sp, 2);
 					
-					for (int i = 0; i < instances; i++)
-					{
-						int st = i+sp*instances;
-						stack[st-2*instances] *= stack[st-1*instances];
+					for (int i = 0; i < groupSize; i++) {
+						int st = i+(sp-1)*groupSize;
+						stackA[st-groupSize] = _mm_mul_ps(stackA[st-groupSize], stackA[st]);
 					}
 				}
 				sp--;
 				break;
 			case Bytecode::MUL2:
-				//cout << "MUL2" << endl;
 				fullLoadConstant(sp, 4);
 				
-				for (int i = 0; i < instances*2; i++)
-				{
-					int st = i+sp*instances;
-					stack[st-4*instances] *= stack[st-2*instances];
+				for (int i = 0; i < groupSize*2; i++) {
+					int st = i+(sp-2)*groupSize;
+					stackA[st-groupSize*2] = _mm_mul_ps(stackA[st-groupSize*2], stackA[st]);
 				}
 				sp-=2;
 				break;
 			case Bytecode::MUL3:
-				//cout << "MUL3" << endl;
 				fullLoadConstant(sp, 6);
 				
-				for (int i = 0; i < instances*3; i++)
-				{
-					int st = i+sp*instances;
-					stack[st-6*instances] *= stack[st-3*instances];
+				for (int i = 0; i < groupSize*3; i++) {
+					int st = i+(sp-3)*groupSize;
+					stackA[st-groupSize*3] = _mm_mul_ps(stackA[st-groupSize*3], stackA[st]);
 				}
 				sp-=3;
 				break;
 			case Bytecode::MUL4:
-				//cout << "MUL4" << endl;
 				fullLoadConstant(sp, 8);
 				
-				for (int i = 0; i < instances*4; i++)
-				{
-					int st = i+sp*instances;
-					stack[st-8*instances] *= stack[st-4*instances];
+				for (int i = 0; i < groupSize*4; i++) {
+					int st = i+(sp-4)*groupSize;
+					stackA[st-groupSize*4] = _mm_add_ps(stackA[st-groupSize*4], stackA[st]);
 				}
 				sp-=4;
 				break;
@@ -608,10 +603,9 @@ struct VM {
 				fullLoadConstant(sp, 3);
 				
 				for (int j = 0; j < 2; j++)
-					for (int i = 0; i < instances; i++)
-					{
-						int st = i+sp*instances;
-						stack[st-(3-j)*instances] *= stack[st-instances];
+					for (int i = 0; i < groupSize; i++) {
+						int st = i+sp*groupSize;
+						stackA[st-(3-j)*groupSize] = _mm_mul_ps(stackA[st-(3-j)*groupSize], stackA[st-groupSize]);
 					}
 				sp-=1;
 				break;
@@ -619,10 +613,9 @@ struct VM {
 				fullLoadConstant(sp, 4);
 				
 				for (int j = 0; j < 3; j++)
-					for (int i = 0; i < instances; i++)
-					{
-						int st = i+sp*instances;
-						stack[st-(4-j)*instances] *= stack[st-instances];
+					for (int i = 0; i < groupSize; i++) {
+						int st = i+sp*groupSize;
+						stackA[st-(4-j)*groupSize] = _mm_mul_ps(stackA[st-(4-j)*groupSize], stackA[st-groupSize]);
 					}
 				sp-=1;
 				break;
@@ -630,10 +623,9 @@ struct VM {
 				fullLoadConstant(sp, 5);
 				
 				for (int j = 0; j < 4; j++)
-					for (int i = 0; i < instances; i++)
-					{
-						int st = i+sp*instances;
-						stack[st-(5-j)*instances] *= stack[st-instances];
+					for (int i = 0; i < groupSize; i++) {
+						int st = i+sp*groupSize;
+						stackA[st-(5-j)*groupSize] = _mm_mul_ps(stackA[st-(5-j)*groupSize], stackA[st-groupSize]);
 					}
 				sp-=1;
 				break;
@@ -650,44 +642,37 @@ struct VM {
 				} else {
 					fullLoadConstant(sp, 2);
 					
-					for (int i = 0; i < instances; i++)
-					{
-						int st = i+sp*instances;
-						stack[st-2*instances] /= stack[st-1*instances];
+					for (int i = 0; i < groupSize; i++) {
+						int st = i+(sp-1)*groupSize;
+						stackA[st-groupSize] = _mm_div_ps(stackA[st-groupSize], stackA[st]);
 					}
 				}
 				sp--;
 				break;
 			case Bytecode::DIV2:
-				//cout << "DIV2" << endl;
 				fullLoadConstant(sp, 4);
 				
-				for (int i = 0; i < instances*2; i++)
-				{
-					int st = i+sp*instances;
-					stack[st-4*instances] /= stack[st-2*instances];
+				for (int i = 0; i < groupSize*2; i++) {
+					int st = i+(sp-2)*groupSize;
+					stackA[st-groupSize*2] = _mm_div_ps(stackA[st-groupSize*2], stackA[st]);
 				}
 				sp-=2;
 				break;
 			case Bytecode::DIV3:
-				//cout << "DIV3" << endl;
 				fullLoadConstant(sp, 6);
 				
-				for (int i = 0; i < instances*3; i++)
-				{
-					int st = i+sp*instances;
-					stack[st-6*instances] /= stack[st-3*instances];
+				for (int i = 0; i < groupSize*3; i++) {
+					int st = i+(sp-3)*groupSize;
+					stackA[st-groupSize*3] = _mm_div_ps(stackA[st-groupSize*3], stackA[st]);
 				}
 				sp-=3;
 				break;
 			case Bytecode::DIV4:
-				//cout << "DIV4" << endl;
 				fullLoadConstant(sp, 8);
 				
-				for (int i = 0; i < instances*4; i++)
-				{
-					int st = i+sp*instances;
-					stack[st-8*instances] /= stack[st-4*instances];
+				for (int i = 0; i < groupSize*4; i++) {
+					int st = i+(sp-4)*groupSize;
+					stackA[st-groupSize*4] = _mm_div_ps(stackA[st-groupSize*4], stackA[st]);
 				}
 				sp-=4;
 				break;
@@ -736,35 +721,29 @@ struct VM {
 				sp-=4;
 				break;
 			case Bytecode::POW:
-				//cout << "POW" << endl;
 				fullLoadConstant(sp, 2);
 				
-				for (int i = 0; i < instances; i++)
-				{
-					int st = i+sp*instances;
-					stack[st-2*instances] = pow(stack[st-2*instances], stack[st-1*instances]);
+				for (int i = 0; i < groupSize; i++) {
+					int st = i+(sp-1)*groupSize;
+					stackA[st-groupSize] = pow_ps(stackA[st-groupSize], stackA[st]);
 				}
 				sp--;
 				break;
 			case Bytecode::POW2:
-				//cout << "POW2" << endl;
 				fullLoadConstant(sp, 4);
 				
-				for (int i = 0; i < instances*2; i++)
-				{
-					int st = i+sp*instances;
-					stack[st-4*instances] = pow(stack[st-4*instances], stack[st-2*instances]);
+				for (int i = 0; i < groupSize*2; i++) {
+					int st = i+(sp-2)*groupSize;
+					stackA[st-groupSize*2] = pow_ps(stackA[st-groupSize*2], stackA[st]);
 				}
 				sp-=2;
 				break;
 			case Bytecode::POW3:
-				//cout << "POW3" << endl;
 				fullLoadConstant(sp, 6);
 				
-				for (int i = 0; i < instances*3; i++)
-				{
-					int st = i+sp*instances;
-					stack[st-6*instances] = pow(stack[st-6*instances], stack[st-3*instances]);
+				for (int i = 0; i < groupSize*3; i++) {
+					int st = i+(sp-3)*groupSize;
+					stackA[st-groupSize*3] = pow_ps(stackA[st-groupSize*3], stackA[st]);
 				}
 				sp-=3;
 				break;
@@ -772,10 +751,9 @@ struct VM {
 				//cout << "MOD4" << endl;
 				fullLoadConstant(sp, 8);
 				
-				for (int i = 0; i < instances*4; i++)
-				{
-					int st = i+sp*instances;
-					stack[st-8*instances] = pow(stack[st-8*instances], stack[st-4*instances]);
+				for (int i = 0; i < groupSize*4; i++) {
+					int st = i+(sp-4)*groupSize;
+					stackA[st-groupSize*4] = pow_ps(stackA[st-groupSize*4], stackA[st]);
 				}
 				sp-=4;
 				break;
@@ -796,44 +774,37 @@ struct VM {
 					fullLoadConstant(sp, 3);
 					
 					sp-=2;
-					for (int i = 0; i < instances; i++)
-					{
-						int st = i+sp*instances;
-						stack[st-instances] += stack[st+instances] * stack[st];
+					for (int i = 0; i < groupSize; i++) {
+						int st = i+sp*groupSize;
+						stackA[st-groupSize] = _mm_add_ps(stackA[st-groupSize], _mm_mul_ps(stackA[st+groupSize], stackA[st]));
 					}
 				}
 				break;
 			case Bytecode::MAD2:
-				//cout << "MAD2" << endl;
 				fullLoadConstant(sp, 6);
 				
 				sp-=4;
-				for (int i = 0; i < instances*2; i++)
-				{
-					int st = i+sp*instances;
-					stack[st-2*instances] += stack[st+2*instances] * stack[st];
+				for (int i = 0; i < groupSize*2; i++) {
+					int st = i+sp*groupSize;
+					stackA[st-2*groupSize] += stackA[st+2*groupSize] * stackA[st];
 				}
 				break;
 			case Bytecode::MAD3:
-				//cout << "MAD3" << endl;
 				fullLoadConstant(sp, 9);
 
 				sp-=6;
-				for (int i = 0; i < instances*3; i++)
-				{
-					int st = i+sp*instances;
-					stack[st-3*instances] += stack[st+3*instances] * stack[st];
+				for (int i = 0; i < groupSize*3; i++) {
+					int st = i+sp*groupSize;
+					stackA[st-3*groupSize] += stackA[st+3*groupSize] * stackA[st];
 				}
 				break;
 			case Bytecode::MAD4:
-				//cout << "MAD4" << endl;
 				fullLoadConstant(sp, 12);
 
 				sp-=8;
-				for (int i = 0; i < instances*4; i++)
-				{
-					int st = i+sp*instances;
-					stack[st-4*instances] += stack[st+4*instances] * stack[st];
+				for (int i = 0; i < groupSize*4; i++) {
+					int st = i+sp*groupSize;
+					stackA[st-4*groupSize] += stackA[st+4*groupSize] * stackA[st];
 				}
 				break;
 			case Bytecode::MIN:
@@ -1062,7 +1033,6 @@ struct VM {
 			case Bytecode::CLAMP3:
 				//cout << "CLAMP3" << endl;
 				fullLoadConstant(sp, 9);
-				
 				for (int i = 0; i < instances*3; i++)
 				{
 					int st = i+sp*instances;
@@ -1072,6 +1042,7 @@ struct VM {
 					v3 = stack[st-3*instances];
 					stack[st-9*instances] = max(min(v1, v3), v2);
 				}
+				//*/
 				sp-=6;
 				break;
 			case Bytecode::CLAMP4:
@@ -1144,9 +1115,9 @@ struct VM {
 				sp-=1;
 				break;
 			case Bytecode::SMOOTHSTEP:
+			{
 				//cout << "SMOOTHSTEP" << endl;
 				fullLoadConstant(sp, 3);
-				
 				for (int i = 0; i < instances; i++)
 				{
 					int st = i+sp*instances;
@@ -1159,10 +1130,10 @@ struct VM {
 				}
 				sp-=2;
 				break;
+			}
 			case Bytecode::SMOOTHSTEPR:
 				//cout << "SMOOTHSTEP" << endl;
 				fullLoadConstant(sp, 3);
-				
 				for (int i = 0; i < instances; i++)
 				{
 					int st = i+sp*instances;
@@ -1316,8 +1287,9 @@ struct VM {
 
 	int   *stackFlags;
 	float *stackConst;
-	float *stack;
-	float *slots;
+
+	alignas(16) float *stack;
+	alignas(16) float *slots;
 
 	// Stats
 	double* icount;

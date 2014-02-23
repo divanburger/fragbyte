@@ -91,7 +91,7 @@ int main(int argc, char const *argv[]) {
 
 	std::cout << "-= Instruction Hotspot =-" << std::endl;
 	for (int i = 0; i < program.instructions.size(); i++) {
-		std::cout << i << ": " << (vm.icount[i] / frames) << " ~ " << bytecodeNames[program.instructions[i].bytecode] << std::endl;
+		std::cout << i << ": " << std::fixed << (vm.icount[i] / frames) << " ~ " << bytecodeNames[program.instructions[i].bytecode] << std::endl;
 	}
 
 	SDL_DestroyRenderer(ren);
